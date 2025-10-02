@@ -1,12 +1,13 @@
-# Atualização do Dashboard
+# Atualização do Estoque
 
-Este projeto passou por uma atualização significativa no dashboard, melhorando a visualização e a experiência do usuário.  
+Este Projeto passou por uma reforma na página de Estoque. 
 
 ## Principais Melhorias
 
--- ATUALIZAÇÕES ESPECIAIS PARA A SIDEBAR --
-- Tudo da atualização anterior
-- Melhorias na SideBar
+-- ATUALIZAÇÕES ESPECIAIS PARA PÁGINA ESTOQUE --
+- adicionei ulgumas imagens ilustrativas.
+- mudei o que tinha em App.tsx para Estoque.tsx (o que fazia sentido, organização)
+- removi ProductForm.tsx, productTable.tsx.
 
 ## Tecnologias Utilizadas
 

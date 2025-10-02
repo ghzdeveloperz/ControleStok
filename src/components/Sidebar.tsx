@@ -1,12 +1,13 @@
+// src/components/Sidebar.tsx
 import { useState } from "react";
 import { FaBoxes, FaChartBar, FaCog, FaBars } from "react-icons/fa";
-import { Link } from "react-router-dom";
 
 interface SidebarProps {
   active?: "Estoque" | "Relatórios" | "Configurações";
+  onNavigate?: (page: "Estoque" | "Relatórios" | "Configurações") => void;
 }
 
-export function Sidebar({ active }: SidebarProps) {
+export function Sidebar({ active, onNavigate }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(true);
 
   const toggleCollapse = () => setCollapsed(!collapsed);
@@ -14,7 +15,7 @@ export function Sidebar({ active }: SidebarProps) {
   return (
     <div
       className={`h-screen flex flex-col transition-width duration-300 ${
-        collapsed ? "w-18" : "w-64"
+        collapsed ? "w-20" : "w-64"
       }`}
       style={{ backgroundColor: "#ececec" }}
     >
@@ -22,7 +23,7 @@ export function Sidebar({ active }: SidebarProps) {
       <div className="flex items-center justify-between p-4 border-b border-gray-300">
         {!collapsed && (
           <img
-            src="src/images/jinjin.png"
+            src="/images/jinjin.png"
             alt="Logo"
             className="h-8 w-auto"
           />
@@ -41,22 +42,22 @@ export function Sidebar({ active }: SidebarProps) {
           collapsed={collapsed}
           icon={FaBoxes}
           label="Estoque"
-          to="/estoque"
           active={active === "Estoque"}
+          onClick={() => onNavigate?.("Estoque")}
         />
         <SidebarItem
           collapsed={collapsed}
           icon={FaChartBar}
           label="Relatórios"
-          to="/relatorios"
           active={active === "Relatórios"}
+          onClick={() => onNavigate?.("Relatórios")}
         />
         <SidebarItem
           collapsed={collapsed}
           icon={FaCog}
           label="Configurações"
-          to="/configuracoes"
           active={active === "Configurações"}
+          onClick={() => onNavigate?.("Configurações")}
         />
       </nav>
     </div>
@@ -68,13 +69,13 @@ interface SidebarItemProps {
   icon: any;
   label: string;
   active?: boolean;
-  to: string;
+  onClick?: () => void;
 }
 
-function SidebarItem({ collapsed, icon: Icon, label, active, to }: SidebarItemProps) {
+function SidebarItem({ collapsed, icon: Icon, label, active, onClick }: SidebarItemProps) {
   return (
-    <Link
-      to={to}
+    <div
+      onClick={onClick}
       className={`flex items-center gap-3 p-3 cursor-pointer transition-all duration-300
         ${active ? "bg-black text-white rounded-lg mx-2" : "hover:bg-gray-200 text-gray-700 rounded-lg mx-2"}`}
     >
@@ -86,6 +87,6 @@ function SidebarItem({ collapsed, icon: Icon, label, active, to }: SidebarItemPr
       >
         {label}
       </span>
-    </Link>
+    </div>
   );
 }
