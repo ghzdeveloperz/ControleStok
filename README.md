@@ -4,12 +4,9 @@ Este projeto passou por uma atualização significativa no dashboard, melhorando
 
 ## Principais Melhorias
 
-- Layout moderno e responsivo.
-- Cards de informações com bordas arredondadas e visual limpo.
-- Integração de cores e tipografia consistente.
-- Barra lateral (Sidebar) com colapso automático para otimização do espaço.
-- Ícones intuitivos para facilitar a navegação.
-- Melhor organização dos dados exibidos no dashboard.
+-- ATUALIZAÇÕES ESPECIAIS PARA A SIDEBAR --
+- Tudo da atualização anterior
+- Melhorias na SideBar
 
 ## Tecnologias Utilizadas
 

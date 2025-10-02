@@ -1,10 +1,12 @@
-// src/components/Sidebar.tsx
 import { useState } from "react";
 import { FaBoxes, FaChartBar, FaCog, FaBars } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
-interface SidebarProps {}
+interface SidebarProps {
+  active?: "Estoque" | "Relatórios" | "Configurações";
+}
 
-export function Sidebar(_: SidebarProps) {
+export function Sidebar({ active }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(true);
 
   const toggleCollapse = () => setCollapsed(!collapsed);
@@ -12,22 +14,22 @@ export function Sidebar(_: SidebarProps) {
   return (
     <div
       className={`h-screen flex flex-col transition-width duration-300 ${
-        collapsed ? "w-20" : "w-64"
+        collapsed ? "w-18" : "w-64"
       }`}
-      style={{ backgroundColor: "#ececec" }} // fundo ligeiramente mais escuro
+      style={{ backgroundColor: "#ececec" }}
     >
       {/* Cabeçalho com logo */}
       <div className="flex items-center justify-between p-4 border-b border-gray-300">
         {!collapsed && (
           <img
-            src="src\images\jinjin.png"   // caminho da sua imagem
+            src="src/images/jinjin.png"
             alt="Logo"
-            className="h-8 w-auto" // aumentou de h-8 (32px) para h-16 (64px)
+            className="h-8 w-auto"
           />
         )}
         <button
           onClick={toggleCollapse}
-          className="p-2 rounded hover:bg-gray-200 transition-colors"
+          className="p-2 rounded hover:bg-gray-200 transition-colors cursor-pointer"
         >
           <FaBars size={20} color="#1f1f1f" />
         </button>
@@ -35,9 +37,27 @@ export function Sidebar(_: SidebarProps) {
 
       {/* Itens da sidebar */}
       <nav className="mt-4 flex flex-col gap-2 flex-1">
-        <SidebarItem collapsed={collapsed} icon={FaBoxes} label="Estoque" />
-        <SidebarItem collapsed={collapsed} icon={FaChartBar} label="Relatórios" />
-        <SidebarItem collapsed={collapsed} icon={FaCog} label="Configurações" />
+        <SidebarItem
+          collapsed={collapsed}
+          icon={FaBoxes}
+          label="Estoque"
+          to="/estoque"
+          active={active === "Estoque"}
+        />
+        <SidebarItem
+          collapsed={collapsed}
+          icon={FaChartBar}
+          label="Relatórios"
+          to="/relatorios"
+          active={active === "Relatórios"}
+        />
+        <SidebarItem
+          collapsed={collapsed}
+          icon={FaCog}
+          label="Configurações"
+          to="/configuracoes"
+          active={active === "Configurações"}
+        />
       </nav>
     </div>
   );
@@ -47,20 +67,25 @@ interface SidebarItemProps {
   collapsed: boolean;
   icon: any;
   label: string;
+  active?: boolean;
+  to: string;
 }
 
-function SidebarItem({ collapsed, icon: Icon, label }: SidebarItemProps) {
+function SidebarItem({ collapsed, icon: Icon, label, active, to }: SidebarItemProps) {
   return (
-    <div className="flex items-center gap-3 p-3 hover:bg-gray-200 rounded-lg cursor-pointer transition-colors">
-      <Icon size={20} color="#1f1f1f" />
+    <Link
+      to={to}
+      className={`flex items-center gap-3 p-3 cursor-pointer transition-all duration-300
+        ${active ? "bg-black text-white rounded-lg mx-2" : "hover:bg-gray-200 text-gray-700 rounded-lg mx-2"}`}
+    >
+      <Icon size={20} color={active ? "#ffffff" : "#1f1f1f"} />
       <span
         className={`transition-all duration-300 ${
           collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100 w-auto"
         }`}
-        style={{ color: "#1f1f1f" }}
       >
         {label}
       </span>
-    </div>
+    </Link>
   );
 }

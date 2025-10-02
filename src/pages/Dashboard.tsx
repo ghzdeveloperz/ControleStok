@@ -1,24 +1,26 @@
-// src/pages/Dashboard.tsx
+import React from "react";
 import { Sidebar } from "../components/Sidebar";
-import ProductForm from "../components/ProductForm";
-import ProductTable from "../components/ProductTable";
+import { ProductCard } from "../components/ProductCard";
+
+const sampleProducts = [
+  { id: 1, name: "Produto A", price: 49.9, quantity: 10, image: "https://via.placeholder.com/300x200" },
+  { id: 2, name: "Produto B", price: 79.9, quantity: 0, image: "https://via.placeholder.com/300x200" },
+  { id: 3, name: "Produto C", price: 19.9, quantity: 5, image: "https://via.placeholder.com/300x200" },
+  { id: 4, name: "Produto D", price: 29.9, quantity: 7, image: "https://via.placeholder.com/300x200" },
+];
 
 export function Dashboard() {
   return (
     <div className="flex h-screen">
-      <Sidebar />
+      {/* Passando 'estoque' como opção ativa */}
+      <Sidebar active="Estoque" />
 
-      {/* Wrapper para a borda direita */}
       <div className="relative flex-1">
         <main className="bg-gray-50 p-6 overflow-auto h-full">
           <h1 className="text-2xl font-bold mb-6 text-gray-800">Estoque</h1>
-
-          {/* Formulário e tabela */}
-          <ProductForm />
-          <ProductTable />
+          <ProductCard products={sampleProducts} />
         </main>
 
-        {/* Borda direita estilizada */}
         <div
           className="absolute top-0 right-0 h-full"
           style={{

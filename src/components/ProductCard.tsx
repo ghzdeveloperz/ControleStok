@@ -1,31 +1,43 @@
-import { Product } from "../types";
+import React from "react";
+
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
+}
 
 interface ProductCardProps {
-  product: Product;
+  products: Product[];
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export const ProductCard: React.FC<ProductCardProps> = ({ products }) => {
   return (
-    <div className="bg-white rounded-xl shadow hover:shadow-lg transition p-4 flex flex-col">
-      <div className="h-32 bg-gray-200 rounded mb-4 flex items-center justify-center">
-        {/* Se não tiver imagem, podemos mostrar placeholder */}
-        <span className="text-gray-500">Sem imagem</span>
-      </div>
-
-      <h3 className="font-bold text-lg">{product.name}</h3>
-      <p className="text-gray-600">Fornecedor: {product.supplier}</p>
-      <p className="text-gray-600">Unidade: {product.unit}</p>
-      <p className="text-gray-800 font-semibold">Estoque: {product.stock}</p>
-      <p className="text-gray-800 font-semibold">R$ {product.unitPrice?.toFixed(2)}</p>
-
-      <div className="mt-auto flex gap-2">
-        <button className="flex-1 bg-blue-500 text-white rounded py-1 hover:bg-blue-600 transition">
-          Editar
-        </button>
-        <button className="flex-1 bg-red-500 text-white rounded py-1 hover:bg-red-600 transition">
-          Excluir
-        </button>
-      </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      {products.map((product) => (
+        <div
+          key={product.id}
+          className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+        >
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-48 object-cover"
+          />
+          <div className="p-4">
+            <h3 className="text-lg font-semibold">{product.name}</h3>
+            <p className="text-gray-600 mt-1">R$ {product.price.toFixed(2)}</p>
+            <p
+              className={`mt-2 font-medium ${
+                product.quantity > 0 ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              {product.quantity > 0 ? `Em estoque: ${product.quantity}` : "Esgotado"}
+            </p>
+          </div>
+        </div>
+      ))}
     </div>
   );
-}
+};
