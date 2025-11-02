@@ -45,9 +45,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <span className="text-xs sm:text-sm text-gray-500">{product.category}</span>
             </div>
 
-            <p className="text-sm sm:text-base text-gray-900 font-bold">
+            {/* <p className="text-sm sm:text-base text-gray-900 font-bold">
               R$ {product.price.toFixed(2)}
-            </p>
+            </p> */}
 
             <p
               className={`text-xs sm:text-sm font-medium ${

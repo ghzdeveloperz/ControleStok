@@ -1,41 +1,27 @@
+// src/pages/Estoque.tsx
 import React, { useState } from "react";
 import { ProductCard, Product } from "../components/ProductCard";
 import { ModalAddProduct } from "../components/modals/ModalAddProduct";
 import { ModalRemoveProduct } from "../components/modals/ModalRemoveProduct";
 import { AlertBanner } from "../components/AlertBanner";
 
+// Produtos iniciais
 const initialProducts: Product[] = [
   {
     id: 1,
-    name: "Sushi Especial",
-    price: 49.9,
-    quantity: 10,
+    name: "Niguiri",
+    price: 49.8,
+    quantity: 20,
     category: "Sushi",
     image: "/images/sushi-especial.jpg",
   },
   {
     id: 2,
-    name: "Pizza Calabresa",
-    price: 79.9,
-    quantity: 0,
-    category: "Brasileiros",
-    image: "/images/pizzas.jpeg",
-  },
-  {
-    id: 3,
-    name: "Salada Fresca",
-    price: 19.9,
-    quantity: 5,
-    category: "Frios",
-    image: "/images/salada.jpg",
-  },
-  {
-    id: 4,
-    name: "Lamen Tradicional",
-    price: 29.9,
-    quantity: 3,
-    category: "Asiáticos",
-    image: "/images/lamen-tradicional.jpg",
+    name: "Uramaki Philadelfia",
+    price: 49.8,
+    quantity: 20,
+    category: "Sushi",
+    image: "/images/uramaki_philadelfia.png",
   },
 ];
 
@@ -43,53 +29,48 @@ export const Estoque: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("Todos");
-
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
-
   const [alert, setAlert] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // Filtragem de produtos por busca + categoria
+  // Filtragem por busca e categoria
   const filteredProducts = products.filter((product) => {
     const matchesCategory = filter === "Todos" || product.category === filter;
     const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
-  const handleAddProduct = (product: Product, entryDate: string) => {
-    setProducts((prev) => [...prev, product]);
-    setAlert({
-      message: `Adicionado ${product.quantity}x "${product.name}" em ${entryDate}`,
-      type: "success",
-    });
+  // Atualiza produtos e dispara alerta
+  const updateProducts = (newProducts: Product[], message: string, type: "success" | "error") => {
+    setProducts(newProducts);
+    setAlert({ message, type });
+    setTimeout(() => setAlert(null), 2000);
   };
 
-  const handleRemoveProduct = (productId: number | string, quantity: number, exitDate: string) => {
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === productId ? { ...p, quantity: p.quantity - quantity } : p
-      )
+  // Adicionar produto existente
+  const handleAddProduct = (productId: number | string, quantity: number, entryDate: string) => {
+    const newProducts = products.map((p) =>
+      p.id === productId ? { ...p, quantity: p.quantity + quantity } : p
     );
+    const addedProduct = products.find((p) => p.id === productId);
+    updateProducts(newProducts, `Adicionado ${quantity}x "${addedProduct?.name}" em ${entryDate}`, "success");
+  };
 
+  // Remover produto existente
+  const handleRemoveProduct = (productId: number | string, quantity: number, exitDate: string) => {
+    const newProducts = products.map((p) =>
+      p.id === productId ? { ...p, quantity: p.quantity - quantity } : p
+    );
     const removedProduct = products.find((p) => p.id === productId);
     if (removedProduct) {
-      setAlert({
-        message: `Removido ${quantity}x "${removedProduct.name}" em ${exitDate}`,
-        type: "error",
-      });
+      updateProducts(newProducts, `Removido ${quantity}x "${removedProduct.name}" em ${exitDate}`, "error");
     }
   };
 
   return (
     <div className="p-4 sm:p-6">
       {/* Banner de alert */}
-      {alert && (
-        <AlertBanner
-          message={alert.message}
-          type={alert.type}
-          onClose={() => setAlert(null)}
-        />
-      )}
+      {alert && <AlertBanner message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
 
       {/* Header com título e botões */}
       <div className="flex justify-between items-center mb-4 flex-wrap">
@@ -98,13 +79,13 @@ export const Estoque: React.FC = () => {
         <div className="flex gap-2 mt-2 sm:mt-0">
           <button
             onClick={() => setShowAddModal(true)}
-            className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-green-600 text-white rounded hover:bg-green-700 transition"
+            className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-lime-900 text-white rounded hover:bg-green-700 transition"
           >
             Adicionar Produto
           </button>
           <button
             onClick={() => setShowRemoveModal(true)}
-            className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-red-600 text-white rounded hover:bg-red-700 transition"
+            className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-red-800 text-white rounded hover:bg-red-700 transition"
           >
             Remover Produto
           </button>
@@ -126,9 +107,7 @@ export const Estoque: React.FC = () => {
           <button
             key={cat}
             className={`cursor-pointer px-4 py-1 rounded text-sm transition ${
-              filter === cat
-                ? "bg-black text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              filter === cat ? "bg-black text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
             onClick={() => setFilter(cat)}
           >
@@ -145,7 +124,7 @@ export const Estoque: React.FC = () => {
         <ModalAddProduct
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddProduct}
-          nextId={products.length + 1}
+          products={products} // passa lista de produtos existentes
         />
       )}
       {showRemoveModal && (

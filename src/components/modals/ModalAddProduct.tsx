@@ -1,49 +1,40 @@
+// src/components/modals/ModalAddProduct.tsx
 import React, { useState } from "react";
 import { Product } from "../ProductCard";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 interface ModalAddProductProps {
+  products: Product[]; // produtos existentes no estoque
   onClose: () => void;
-  onAdd: (product: Product, entryDate: string) => void;
-  nextId: number | string;
+  onAdd: (productId: Product["id"], quantity: number, entryDate: string) => void;
 }
 
 export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
+  products,
   onClose,
   onAdd,
-  nextId,
 }) => {
-  const [name, setName] = useState<string>("");
+  const [search, setSearch] = useState(""); // busca pelo nome
+  const [selectedProductId, setSelectedProductId] = useState<Product["id"] | null>(
+    products.length > 0 ? products[0].id : null
+  );
   const [quantity, setQuantity] = useState<number | "">("");
-  const [price, setPrice] = useState<number | "">("");
-  const [category, setCategory] = useState<
-    "Brasileiros" | "Asiáticos" | "Limpeza" | "Sushi"
-  >("Brasileiros");
   const [entryDate, setEntryDate] = useState<Date | null>(null);
 
+  // Filtra produtos pelo texto digitado
+  const filteredProducts = products.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
+
   const handleAdd = () => {
-    if (!name.trim() || quantity === "" || price === "" || !entryDate) return;
+    if (!selectedProductId || quantity === "" || !entryDate) return;
+    onAdd(selectedProductId, Number(quantity), entryDate.toISOString().split("T")[0]); // formata YYYY-MM-DD
 
-    const product: Product = {
-      id: nextId,
-      name: name.trim(),
-      quantity: Number(quantity),
-      price: Number(price),
-      category,
-      image: "/images/no-image.png", // placeholder
-    };
-
-    // envia a data como string ISO
-    onAdd(product, entryDate.toISOString());
-
-    // reset campos
-    setName("");
+    setSearch("");
+    setSelectedProductId(products[0]?.id ?? null);
     setQuantity("");
-    setPrice("");
-    setCategory("Brasileiros");
     setEntryDate(null);
-
     onClose();
   };
 
@@ -53,13 +44,28 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
         <h2 className="text-xl font-bold mb-4">Adicionar Produto</h2>
 
         <div className="flex flex-col gap-3">
+          {/* Campo de busca */}
           <input
             type="text"
-            placeholder="Nome do produto"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            placeholder="Buscar produto..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             className="cursor-text px-3 py-2 border rounded w-full"
           />
+
+          {/* Select filtrado */}
+          <select
+            value={selectedProductId ?? ""}
+            onChange={(e) => setSelectedProductId(Number(e.target.value))}
+            className="cursor-pointer px-3 py-2 border rounded w-full"
+          >
+            {filteredProducts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} (Em estoque: {p.quantity})
+              </option>
+            ))}
+          </select>
+
           <input
             type="number"
             placeholder="Quantidade"
@@ -69,35 +75,14 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
             }
             className="cursor-text px-3 py-2 border rounded w-full"
           />
-          <input
-            type="number"
-            placeholder="Preço (R$)"
-            value={price === "" ? "" : String(price)}
-            onChange={(e) =>
-              setPrice(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            className="cursor-text px-3 py-2 border rounded w-full"
-          />
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value as any)}
-            className="cursor-pointer px-3 py-2 border rounded w-full"
-          >
-            <option value="Brasileiros">Brasileiros</option>
-            <option value="Asiáticos">Asiáticos</option>
-            <option value="Limpeza">Limpeza</option>
-            <option value="Sushi">Sushi</option>
-            <option value="Frios">Frios</option> {/* nova categoria */}
-          </select>
 
-
-          {/* DatePicker */}
+          {/* DatePicker estilizado */}
           <DatePicker
             selected={entryDate}
             onChange={(date: Date | null) => setEntryDate(date)}
             className="cursor-pointer px-3 py-2 border rounded w-full"
             placeholderText="Escolha a data de entrada"
-            dateFormat="dd/MM/yyyy"
+            dateFormat="yyyy-MM-dd"
           />
         </div>
 
@@ -110,7 +95,7 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
           </button>
           <button
             onClick={handleAdd}
-            className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-green-600 text-white rounded hover:bg-green-700 transition"
+            className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-lime-900 text-white rounded hover:bg-green-700 transition"
           >
             Adicionar
           </button>
@@ -119,3 +104,4 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
     </div>
   );
 };
+  

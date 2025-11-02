@@ -1,3 +1,4 @@
+// src/components/modals/ModalRemoveProduct.tsx
 import React, { useState } from "react";
 import { Product } from "../ProductCard";
 import DatePicker from "react-datepicker";
@@ -14,11 +15,17 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   onClose,
   onRemove,
 }) => {
-  const [selectedProductId, setSelectedProductId] = useState<Product["id"] | "">(
-    products.length > 0 ? products[0].id : ""
+  const [search, setSearch] = useState("");
+  const [selectedProductId, setSelectedProductId] = useState<Product["id"] | null>(
+    products.length > 0 ? products[0].id : null
   );
   const [quantity, setQuantity] = useState<number | "">("");
   const [exitDate, setExitDate] = useState<Date | null>(null);
+
+  // Filtra produtos pelo nome digitado
+  const filteredProducts = products.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   const handleRemove = () => {
     if (!selectedProductId || quantity === "" || !exitDate) return;
@@ -31,13 +38,13 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
       return;
     }
 
-    // envia a data como string ISO
-    onRemove(selectedProductId, Number(quantity), exitDate.toISOString());
+    onRemove(selectedProductId, Number(quantity), exitDate.toISOString().split("T")[0]); // formata YYYY-MM-DD
 
     // reset campos
     setQuantity("");
     setExitDate(null);
-    setSelectedProductId(products[0]?.id ?? "");
+    setSelectedProductId(filteredProducts[0]?.id ?? null);
+    setSearch("");
     onClose();
   };
 
@@ -47,12 +54,22 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
         <h2 className="text-xl font-bold mb-4">Remover Produto</h2>
 
         <div className="flex flex-col gap-3">
+          {/* Campo de busca */}
+          <input
+            type="text"
+            placeholder="Buscar produto..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="cursor-text px-3 py-2 border rounded w-full"
+          />
+
+          {/* Select filtrado */}
           <select
-            value={selectedProductId}
+            value={selectedProductId ?? ""}
             onChange={(e) => setSelectedProductId(Number(e.target.value))}
             className="cursor-pointer px-3 py-2 border rounded w-full"
           >
-            {products.map((p) => (
+            {filteredProducts.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} (Em estoque: {p.quantity})
               </option>
@@ -70,13 +87,13 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
             min={1}
           />
 
-          {/* DatePicker para data de saída */}
+          {/* DatePicker estilizado */}
           <DatePicker
             selected={exitDate}
             onChange={(date: Date | null) => setExitDate(date)}
             className="cursor-pointer px-3 py-2 border rounded w-full"
             placeholderText="Escolha a data de saída"
-            dateFormat="dd/MM/yyyy"
+            dateFormat="yyyy-MM-dd"
           />
         </div>
 
@@ -89,7 +106,7 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
           </button>
           <button
             onClick={handleRemove}
-            className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-red-600 text-white rounded hover:bg-red-700 transition"
+            className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-red-800 text-white rounded hover:bg-red-700 transition"
           >
             Remover
           </button>
