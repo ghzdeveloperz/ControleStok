@@ -5,11 +5,8 @@ Este Projeto passou por uma reforma na página de Estoque.
 ## Principais Melhorias
 
 -- ATUALIZAÇÕES ESPECIAIS PARA PÁGINA ESTOQUE --
-- adicionei ulgumas imagens ilustrativas.
-- mudei o que tinha em App.tsx para Estoque.tsx (o que fazia sentido, organização)
-- removi ProductForm.tsx, productTable.tsx.
-- adicionei botões de adicionar e remover produtos
-- campo de date mais estilizado com Date Repiker
+- armazenamento local (por hora)
+- favicon da marca mais Nome oficial
 
 ## Tecnologias Utilizadas
 

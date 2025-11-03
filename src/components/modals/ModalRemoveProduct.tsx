@@ -22,7 +22,6 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   const [quantity, setQuantity] = useState<number | "">("");
   const [exitDate, setExitDate] = useState<Date | null>(null);
 
-  // Filtra produtos pelo nome digitado
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -33,14 +32,13 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
     const product = products.find((p) => p.id === selectedProductId);
     if (!product) return;
 
-    if (quantity > product.quantity) {
+    if (Number(quantity) > product.quantity) {
       alert(`Não é possível remover mais que ${product.quantity} unidades.`);
       return;
     }
 
-    onRemove(selectedProductId, Number(quantity), exitDate.toISOString().split("T")[0]); // formata YYYY-MM-DD
+    onRemove(selectedProductId, Number(quantity), exitDate.toISOString().split("T")[0]);
 
-    // reset campos
     setQuantity("");
     setExitDate(null);
     setSelectedProductId(filteredProducts[0]?.id ?? null);
@@ -54,7 +52,6 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
         <h2 className="text-xl font-bold mb-4">Remover Produto</h2>
 
         <div className="flex flex-col gap-3">
-          {/* Campo de busca */}
           <input
             type="text"
             placeholder="Buscar produto..."
@@ -63,7 +60,6 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
             className="cursor-text px-3 py-2 border rounded w-full"
           />
 
-          {/* Select filtrado */}
           <select
             value={selectedProductId ?? ""}
             onChange={(e) => setSelectedProductId(Number(e.target.value))}
@@ -87,7 +83,6 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
             min={1}
           />
 
-          {/* DatePicker estilizado */}
           <DatePicker
             selected={exitDate}
             onChange={(date: Date | null) => setExitDate(date)}

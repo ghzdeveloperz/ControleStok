@@ -1,11 +1,11 @@
 // src/pages/Estoque.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ProductCard, Product } from "../components/ProductCard";
 import { ModalAddProduct } from "../components/modals/ModalAddProduct";
 import { ModalRemoveProduct } from "../components/modals/ModalRemoveProduct";
 import { AlertBanner } from "../components/AlertBanner";
+import { initDB, saveProducts, getProductsQuantities } from "../db"; // nossa db local
 
-// Produtos iniciais
 const initialProducts: Product[] = [
   {
     id: 1,
@@ -33,6 +33,23 @@ export const Estoque: React.FC = () => {
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [alert, setAlert] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
+  // Inicializa IndexedDB e carrega quantidades salvas
+  useEffect(() => {
+    const loadData = async () => {
+      await initDB();
+      const savedQuantities = await getProductsQuantities();
+      if (savedQuantities.length > 0) {
+        // Atualiza apenas as quantidades
+        const updatedProducts = initialProducts.map((p) => {
+          const saved = savedQuantities.find((sq) => sq.id === p.id);
+          return saved ? { ...p, quantity: saved.quantity } : p;
+        });
+        setProducts(updatedProducts);
+      }
+    };
+    loadData();
+  }, []);
+
   // Filtragem por busca e categoria
   const filteredProducts = products.filter((product) => {
     const matchesCategory = filter === "Todos" || product.category === filter;
@@ -41,13 +58,20 @@ export const Estoque: React.FC = () => {
   });
 
   // Atualiza produtos e dispara alerta
-  const updateProducts = (newProducts: Product[], message: string, type: "success" | "error") => {
+  const updateProducts = async (newProducts: Product[], message: string, type: "success" | "error") => {
     setProducts(newProducts);
     setAlert({ message, type });
+
+    // Atualiza IndexedDB apenas com as quantidades
+    const quantities: { id: number | string; quantity: number }[] = newProducts.map((p) => ({
+      id: p.id,
+      quantity: p.quantity,
+    }));
+    await saveProducts(quantities);
+
     setTimeout(() => setAlert(null), 2000);
   };
 
-  // Adicionar produto existente
   const handleAddProduct = (productId: number | string, quantity: number, entryDate: string) => {
     const newProducts = products.map((p) =>
       p.id === productId ? { ...p, quantity: p.quantity + quantity } : p
@@ -56,7 +80,6 @@ export const Estoque: React.FC = () => {
     updateProducts(newProducts, `Adicionado ${quantity}x "${addedProduct?.name}" em ${entryDate}`, "success");
   };
 
-  // Remover produto existente
   const handleRemoveProduct = (productId: number | string, quantity: number, exitDate: string) => {
     const newProducts = products.map((p) =>
       p.id === productId ? { ...p, quantity: p.quantity - quantity } : p
@@ -69,10 +92,8 @@ export const Estoque: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Banner de alert */}
       {alert && <AlertBanner message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
 
-      {/* Header com título e botões */}
       <div className="flex justify-between items-center mb-4 flex-wrap">
         <h1 className="text-2xl font-bold text-gray-800">Estoque</h1>
 
@@ -92,7 +113,6 @@ export const Estoque: React.FC = () => {
         </div>
       </div>
 
-      {/* Campo de busca */}
       <input
         type="text"
         placeholder="Buscar produto..."
@@ -101,7 +121,6 @@ export const Estoque: React.FC = () => {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      {/* Filtros */}
       <div className="flex flex-wrap gap-2 mb-6">
         {["Todos", "Brasileiros", "Asiáticos", "Sushi", "Limpeza", "Frios"].map((cat) => (
           <button
@@ -116,15 +135,13 @@ export const Estoque: React.FC = () => {
         ))}
       </div>
 
-      {/* Vitrine de produtos */}
       <ProductCard products={filteredProducts} />
 
-      {/* Modais */}
       {showAddModal && (
         <ModalAddProduct
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddProduct}
-          products={products} // passa lista de produtos existentes
+          products={products}
         />
       )}
       {showRemoveModal && (

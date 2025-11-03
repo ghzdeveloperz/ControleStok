@@ -15,21 +15,20 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
   onClose,
   onAdd,
 }) => {
-  const [search, setSearch] = useState(""); // busca pelo nome
+  const [search, setSearch] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<Product["id"] | null>(
     products.length > 0 ? products[0].id : null
   );
   const [quantity, setQuantity] = useState<number | "">("");
   const [entryDate, setEntryDate] = useState<Date | null>(null);
 
-  // Filtra produtos pelo texto digitado
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleAdd = () => {
     if (!selectedProductId || quantity === "" || !entryDate) return;
-    onAdd(selectedProductId, Number(quantity), entryDate.toISOString().split("T")[0]); // formata YYYY-MM-DD
+    onAdd(selectedProductId, Number(quantity), entryDate.toISOString().split("T")[0]);
 
     setSearch("");
     setSelectedProductId(products[0]?.id ?? null);
@@ -44,7 +43,6 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
         <h2 className="text-xl font-bold mb-4">Adicionar Produto</h2>
 
         <div className="flex flex-col gap-3">
-          {/* Campo de busca */}
           <input
             type="text"
             placeholder="Buscar produto..."
@@ -53,7 +51,6 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
             className="cursor-text px-3 py-2 border rounded w-full"
           />
 
-          {/* Select filtrado */}
           <select
             value={selectedProductId ?? ""}
             onChange={(e) => setSelectedProductId(Number(e.target.value))}
@@ -76,7 +73,6 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
             className="cursor-text px-3 py-2 border rounded w-full"
           />
 
-          {/* DatePicker estilizado */}
           <DatePicker
             selected={entryDate}
             onChange={(date: Date | null) => setEntryDate(date)}
@@ -104,4 +100,3 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
     </div>
   );
 };
-  

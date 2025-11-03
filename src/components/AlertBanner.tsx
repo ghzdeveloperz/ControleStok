@@ -11,12 +11,9 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({ message, type, onClose
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    // ativa a animação quando o componente monta
     setShow(true);
-
     const timer = setTimeout(() => {
       setShow(false);
-      // fecha de fato após animação
       setTimeout(onClose, 300);
     }, 2000);
 
@@ -25,12 +22,9 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({ message, type, onClose
 
   return (
     <div
-      className={`
-        fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded shadow-lg
+      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded shadow-lg
         ${type === "success" ? "bg-lime-900 text-white" : "bg-red-800 text-white"}
-        transform transition-transform duration-300
-        ${show ? "animate-elastic" : "scale-0"}
-      `}
+        transform transition-all duration-300 ${show ? "scale-100" : "scale-0"}`}
     >
       {message}
     </div>

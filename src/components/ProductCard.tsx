@@ -1,3 +1,4 @@
+// src/components/ProductCard.tsx
 import React from "react";
 
 export interface Product {
@@ -27,7 +28,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           key={product.id}
           className="relative bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
         >
-          {/* Imagem */}
           <div className="h-36 sm:h-40 md:h-48 w-full overflow-hidden bg-gray-100">
             <img
               src={product.image ?? "https://via.placeholder.com/400x300?text=No+Image"}
@@ -36,7 +36,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             />
           </div>
 
-          {/* Informações */}
           <div className="p-3 flex flex-col gap-1 sm:p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm sm:text-base font-semibold text-gray-800">
@@ -44,10 +43,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </h2>
               <span className="text-xs sm:text-sm text-gray-500">{product.category}</span>
             </div>
-
-            {/* <p className="text-sm sm:text-base text-gray-900 font-bold">
-              R$ {product.price.toFixed(2)}
-            </p> */}
 
             <p
               className={`text-xs sm:text-sm font-medium ${
@@ -58,7 +53,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </p>
           </div>
 
-          {/* Botão remover */}
           {removeMode && (
             <div className="absolute top-2 right-2">
               <button
