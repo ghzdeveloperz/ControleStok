@@ -4,7 +4,7 @@ import { ProductCard, Product } from "../components/ProductCard";
 import { ModalAddProduct } from "../components/modals/ModalAddProduct";
 import { ModalRemoveProduct } from "../components/modals/ModalRemoveProduct";
 import { AlertBanner } from "../components/AlertBanner";
-import { initDB, saveProducts, getProductsQuantities } from "../db"; // nossa db local
+import { initDB, saveProducts, getProductsQuantities, clearDB } from "../db"; // incluí clearDB
 
 const initialProducts: Product[] = [
   {
@@ -39,7 +39,6 @@ export const Estoque: React.FC = () => {
       await initDB();
       const savedQuantities = await getProductsQuantities();
       if (savedQuantities.length > 0) {
-        // Atualiza apenas as quantidades
         const updatedProducts = initialProducts.map((p) => {
           const saved = savedQuantities.find((sq) => sq.id === p.id);
           return saved ? { ...p, quantity: saved.quantity } : p;
@@ -62,7 +61,6 @@ export const Estoque: React.FC = () => {
     setProducts(newProducts);
     setAlert({ message, type });
 
-    // Atualiza IndexedDB apenas com as quantidades
     const quantities: { id: number | string; quantity: number }[] = newProducts.map((p) => ({
       id: p.id,
       quantity: p.quantity,
@@ -90,6 +88,15 @@ export const Estoque: React.FC = () => {
     }
   };
 
+  // ---------------------- BOTÃO PARA LIMPAR ARMAZENAMENTO ----------------------
+  const handleClearStorage = async () => {
+    await clearDB(); // limpa IndexedDB
+    setProducts(initialProducts); // reseta produtos locais
+    setAlert({ message: "Armazenamento local limpo!", type: "success" });
+    setTimeout(() => setAlert(null), 2000);
+  };
+  // ------------------------------------------------------------------------------
+
   return (
     <div className="p-4 sm:p-6">
       {alert && <AlertBanner message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
@@ -110,6 +117,15 @@ export const Estoque: React.FC = () => {
           >
             Remover Produto
           </button>
+
+          {/* ---------------------- BOTÃO LIMPAR ARMAZENAMENTO ---------------------- */}
+          <button
+            onClick={handleClearStorage}
+            className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-gray-700 text-white rounded hover:bg-gray-600 transition"
+          >
+            Limpar Armazenamento
+          </button>
+          {/* ---------------------------------------------------------------------- */}
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Product } from "../ProductCard";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { saveMovement } from "../../db";
 
 interface ModalAddProductProps {
   products: Product[]; // produtos existentes no estoque
@@ -21,20 +22,42 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
   );
   const [quantity, setQuantity] = useState<number | "">("");
   const [entryDate, setEntryDate] = useState<Date | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!selectedProductId || quantity === "" || !entryDate) return;
-    onAdd(selectedProductId, Number(quantity), entryDate.toISOString().split("T")[0]);
+    setLoading(true);
 
-    setSearch("");
-    setSelectedProductId(products[0]?.id ?? null);
-    setQuantity("");
-    setEntryDate(null);
-    onClose();
+    const dateStr = entryDate.toISOString().split("T")[0]; // YYYY-MM-DD
+
+    // Envia para a função do pai (atualiza quantidade)
+    onAdd(selectedProductId, Number(quantity), dateStr);
+
+    // salva movimentação no IndexedDB
+    const prod = products.find((p) => p.id === selectedProductId);
+    try {
+      await saveMovement({
+        productId: selectedProductId,
+        productName: prod?.name ?? String(selectedProductId),
+        quantity: Number(quantity),
+        type: "add",
+        date: dateStr,
+      });
+    } catch (err) {
+      console.error("Erro ao salvar movimentação:", err);
+    } finally {
+      setLoading(false);
+      // reset campos
+      setSearch("");
+      setSelectedProductId(products[0]?.id ?? null);
+      setQuantity("");
+      setEntryDate(null);
+      onClose();
+    }
   };
 
   return (
@@ -85,15 +108,17 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
         <div className="mt-4 flex justify-end gap-2 flex-wrap">
           <button
             onClick={onClose}
+            disabled={loading}
             className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-gray-200 rounded hover:bg-gray-300 transition"
           >
             Cancelar
           </button>
           <button
             onClick={handleAdd}
+            disabled={loading}
             className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-lime-900 text-white rounded hover:bg-green-700 transition"
           >
-            Adicionar
+            {loading ? "Adicionando..." : "Adicionar"}
           </button>
         </div>
       </div>

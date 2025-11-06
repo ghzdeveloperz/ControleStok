@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* src/index.css ou global.css */
+svg:focus {
+  outline: none;
+}

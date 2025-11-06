@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Product } from "../ProductCard";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { saveMovement } from "../../db";
 
 interface ModalRemoveProductProps {
   products: Product[];
@@ -21,12 +22,13 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   );
   const [quantity, setQuantity] = useState<number | "">("");
   const [exitDate, setExitDate] = useState<Date | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleRemove = () => {
+  const handleRemove = async () => {
     if (!selectedProductId || quantity === "" || !exitDate) return;
 
     const product = products.find((p) => p.id === selectedProductId);
@@ -37,13 +39,32 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
       return;
     }
 
-    onRemove(selectedProductId, Number(quantity), exitDate.toISOString().split("T")[0]);
+    setLoading(true);
+    const dateStr = exitDate.toISOString().split("T")[0];
 
-    setQuantity("");
-    setExitDate(null);
-    setSelectedProductId(filteredProducts[0]?.id ?? null);
-    setSearch("");
-    onClose();
+    // chama função do pai para atualizar quantidade
+    onRemove(selectedProductId, Number(quantity), dateStr);
+
+    // salva movimentação no DB
+    try {
+      await saveMovement({
+        productId: selectedProductId,
+        productName: product.name,
+        quantity: Number(quantity),
+        type: "remove",
+        date: dateStr,
+      });
+    } catch (err) {
+      console.error("Erro ao salvar movimentação:", err);
+    } finally {
+      setLoading(false);
+      // reset campos
+      setQuantity("");
+      setExitDate(null);
+      setSelectedProductId(filteredProducts[0]?.id ?? null);
+      setSearch("");
+      onClose();
+    }
   };
 
   return (
@@ -95,15 +116,17 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
         <div className="mt-4 flex justify-end gap-2 flex-wrap">
           <button
             onClick={onClose}
+            disabled={loading}
             className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-gray-200 rounded hover:bg-gray-300 transition"
           >
             Cancelar
           </button>
           <button
             onClick={handleRemove}
+            disabled={loading}
             className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-red-800 text-white rounded hover:bg-red-700 transition"
           >
-            Remover
+            {loading ? "Removendo..." : "Remover"}
           </button>
         </div>
       </div>
