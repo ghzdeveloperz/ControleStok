@@ -63,12 +63,8 @@ export function Sidebar({ active, onNavigate, logoSrc, profileSrc, userId }: Sid
           style={{ width: collapsed ? 60 : sidebarWidth - 16 }}
         >
           <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white flex-shrink-0">
-            <img
-              key={profileSrc}
-              src={profileSrc}
-              alt="Profile"
-              className="w-full h-full object-cover"
-            />
+            <img src={profileSrc} className="w-10 h-10 rounded-full object-cover" alt="Foto de Perfil" />
+
           </div>
           {!collapsed && (
             <span
@@ -98,9 +94,8 @@ function SidebarItem({ collapsed, icon: Icon, label, active, onClick, sidebarWid
   return (
     <div
       onClick={onClick}
-      className={`flex items-center ${collapsed ? "justify-center" : "justify-start"} gap-3 p-4 cursor-pointer transition-colors duration-300 ${
-        active ? "bg-black text-white rounded-lg mx-2" : "hover:bg-gray-200 text-gray-700 rounded-lg mx-2"
-      }`}
+      className={`flex items-center ${collapsed ? "justify-center" : "justify-start"} gap-3 p-4 cursor-pointer transition-colors duration-300 ${active ? "bg-black text-white rounded-lg mx-2" : "hover:bg-gray-200 text-gray-700 rounded-lg mx-2"
+        }`}
     >
       <Icon size={22} color={active ? "#ffffff" : "#1f1f1f"} />
       <div
