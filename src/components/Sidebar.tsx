@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { FaBoxes, FaChartBar, FaCog, FaBars } from "react-icons/fa";
 
 interface SidebarProps {
@@ -11,49 +11,24 @@ interface SidebarProps {
 
 export function Sidebar({ active, onNavigate, logoSrc, profileSrc, userId }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(true);
-  const [persistedProfile, setPersistedProfile] = useState(profileSrc ?? "/images/profile-200.jpg");
-  const [persistedUserId, setPersistedUserId] = useState(userId ?? "xxxxx");
+  const sidebarWidth = collapsed ? 80 : 256;
 
   const toggleCollapse = () => setCollapsed(!collapsed);
 
-  // Atualiza quando a prop mudar
-  useEffect(() => {
-    if (profileSrc) setPersistedProfile(profileSrc);
-  }, [profileSrc]);
-
-  useEffect(() => {
-    if (userId) setPersistedUserId(userId);
-  }, [userId]);
-
-  const sidebarWidth = collapsed ? 80 : 256;
-
   return (
     <div
-      className="flex flex-col h-screen overflow-hidden relative"
-      style={{
-        width: sidebarWidth,
-        transition: "width 0.3s ease",
-        backgroundColor: "#ececec",
-      }}
+      className="flex flex-col h-screen relative overflow-visible"
+      style={{ width: sidebarWidth, transition: "width 0.3s ease", backgroundColor: "#ececec" }}
     >
       {/* Cabeçalho */}
       <div className="flex items-center justify-between p-4 border-b border-gray-300">
-        {!collapsed && (
-          <img
-            src={logoSrc ?? "/images/sua-logo.png"}
-            alt="Logo"
-            className="h-10 w-auto"
-          />
-        )}
-        <button
-          onClick={toggleCollapse}
-          className="p-2 rounded hover:bg-gray-200 transition-colors cursor-pointer"
-        >
+        {!collapsed && <img src={logoSrc ?? "/images/sua-logo.png"} alt="Logo" className="h-10 w-auto" />}
+        <button onClick={toggleCollapse} className="p-2 rounded hover:bg-gray-200 transition-colors cursor-pointer">
           <FaBars size={20} color="#1f1f1f" />
         </button>
       </div>
 
-      {/* Itens do menu */}
+      {/* Menu */}
       <nav className="mt-4 flex flex-col flex-1 items-stretch gap-3">
         <SidebarItem
           collapsed={collapsed}
@@ -84,14 +59,13 @@ export function Sidebar({ active, onNavigate, logoSrc, profileSrc, userId }: Sid
       {/* Rodapé */}
       <div className="absolute bottom-4 left-0 w-full flex justify-center">
         <div
-          className={`flex items-center ${
-            collapsed ? "justify-center" : "justify-start"
-          } gap-3 bg-black rounded-full px-3 py-2 transition-all duration-300 overflow-hidden`}
+          className={`relative flex items-center ${collapsed ? "justify-center" : "justify-start"} gap-3 bg-black rounded-full px-3 py-2`}
           style={{ width: collapsed ? 60 : sidebarWidth - 16 }}
         >
           <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white flex-shrink-0">
             <img
-              src={persistedProfile}
+              key={profileSrc}
+              src={profileSrc}
               alt="Profile"
               className="w-full h-full object-cover"
             />
@@ -101,7 +75,7 @@ export function Sidebar({ active, onNavigate, logoSrc, profileSrc, userId }: Sid
               className="text-white font-semibold text-sm truncate"
               style={{ maxWidth: sidebarWidth - 80 }}
             >
-              ID: {persistedUserId}
+              {userId ?? "xxxxx"}
             </span>
           )}
         </div>
@@ -110,6 +84,7 @@ export function Sidebar({ active, onNavigate, logoSrc, profileSrc, userId }: Sid
   );
 }
 
+// SidebarItem separado
 interface SidebarItemProps {
   collapsed: boolean;
   icon: any;
@@ -123,9 +98,7 @@ function SidebarItem({ collapsed, icon: Icon, label, active, onClick, sidebarWid
   return (
     <div
       onClick={onClick}
-      className={`flex items-center ${
-        collapsed ? "justify-center" : "justify-start"
-      } gap-3 p-4 cursor-pointer transition-colors duration-300 ${
+      className={`flex items-center ${collapsed ? "justify-center" : "justify-start"} gap-3 p-4 cursor-pointer transition-colors duration-300 ${
         active ? "bg-black text-white rounded-lg mx-2" : "hover:bg-gray-200 text-gray-700 rounded-lg mx-2"
       }`}
     >

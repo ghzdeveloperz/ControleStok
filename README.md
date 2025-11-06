@@ -4,12 +4,10 @@ Este Projeto passou por uma reforma na página de Estoque.
 
 ## Principais Melhorias
 
--- ATUALIZAÇÕES ESPECIAIS PARA PÁGINA ESTOQUE --
-- seção de Configurações 
-- seção de Relatórios
-- seção de Estoque
-- Rodapé de usuário
-- foto de perfil e banner
+-- ATUALIZAÇÕES--
+- login com o Google
+- rodapé no Sidebar que aparece a conta logada
+- tela de login (não 100% pronta ainda, falta cadastro, esqueceu senha.)
 
 ## Tecnologias Utilizadas
 

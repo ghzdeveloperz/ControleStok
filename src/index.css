@@ -4,3 +4,12 @@
 svg:focus {
   outline: none;
 }
+
+@keyframes dropdown {
+  0% { transform: translateY(5px) scale(0.95); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.animate-dropdown {
+  animation: dropdown 0.2s ease-out forwards;
+}
