@@ -46,8 +46,7 @@ const Relatorios: React.FC = () => {
   const selectedMonth = selectedDate.getMonth() + 1;
   const selectedYear = selectedDate.getFullYear();
 
-  // Ref para scroll suave
-  const containerRef = useRef<HTMLDivElement | null>(null); 
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const dayRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [highlightedDay, setHighlightedDay] = useState<number | null>(null);
 
@@ -61,20 +60,21 @@ const Relatorios: React.FC = () => {
     loadMovements();
   }, [selectedMonth, selectedYear]);
 
+  // Garante que os dados do gráfico mensal usem Entradas/Saídas
   const dailyData = useMemo(() => {
     const days = daysInMonth(selectedMonth, selectedYear);
     const base = Array.from({ length: days }, (_, i) => ({
       day: i + 1,
-      add: 0,
-      remove: 0,
+      Entradas: 0,
+      Saidas: 0,
     }));
 
     movements.forEach((m) => {
       const day = Number(m.date.split("-")[2]);
       if (!day || day < 1 || day > days) return;
       const slot = base[day - 1];
-      if (m.type === "add") slot.add += m.quantity;
-      else slot.remove += m.quantity;
+      if (m.type === "add") slot.Entradas += m.quantity;
+      else slot.Saidas += m.quantity;
     });
 
     return base.map((d) => ({ ...d, dayLabel: String(d.day) }));
@@ -142,14 +142,17 @@ const Relatorios: React.FC = () => {
     return daily;
   }, [movements, selectedMonth, selectedYear]);
 
-  // Scroll suave centralizado + destaque temporário
   const scrollToDay = (day: number) => {
     const element = dayRefs.current[day];
     const container = containerRef.current;
     if (element && container) {
       const containerRect = container.getBoundingClientRect();
       const elementRect = element.getBoundingClientRect();
-      const offset = elementRect.top - containerRect.top - containerRect.height / 2 + elementRect.height / 2;
+      const offset =
+        elementRect.top -
+        containerRect.top -
+        containerRect.height / 2 +
+        elementRect.height / 2;
 
       container.scrollBy({
         top: offset,
@@ -222,13 +225,9 @@ const Relatorios: React.FC = () => {
                   <CartesianGrid strokeDasharray="2 2" stroke="#e5e7eb" />
                   <XAxis dataKey="dayLabel" />
                   <YAxis />
-                  <Tooltip
-                    formatter={(value: number, name: string) =>
-                      [`${value}`, name === "add" ? "Entradas" : "Saídas"]
-                    }
-                  />
-                  <Bar dataKey="add" name="Entradas" fill="#16A34A" />
-                  <Bar dataKey="remove" name="Saídas" fill="#DC2626" />
+                  <Tooltip />
+                  <Bar dataKey="Entradas" fill="#16A34A" />
+                  <Bar dataKey="Saidas" fill="#DC2626" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -282,7 +281,6 @@ const Relatorios: React.FC = () => {
                                   axisLine={false}
                                   tickLine={false}
                                 />
-                                {/* Tooltip customizado para não repetir */}
                                 <Tooltip
                                   content={({ active, payload }) => {
                                     if (active && payload && payload.length) {

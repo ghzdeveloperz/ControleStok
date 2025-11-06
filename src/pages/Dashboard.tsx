@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Sidebar } from "../components/Sidebar";
 import { ProductCard } from "../components/ProductCard";
 
@@ -10,26 +10,65 @@ const sampleProducts = [
 ];
 
 export function Dashboard() {
+  const [activePage, setActivePage] = useState<"Estoque" | "Relatórios" | "Configurações">("Estoque");
+  const [logoSrc, setLogoSrc] = useState<string | undefined>(undefined); // logo dinâmica
+
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        img.src = e.target.result as string;
+        img.onload = () => {
+          // validação de tamanho: 612 x 130
+          if (img.width === 612 && img.height === 130) {
+            setLogoSrc(img.src);
+          } else {
+            alert("A imagem precisa ter exatamente 612 x 130 px");
+          }
+        };
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const renderPage = () => {
+    switch (activePage) {
+      case "Estoque":
+        return (
+          <main className="bg-gray-50 p-6 overflow-auto h-full">
+            <h1 className="text-2xl font-bold mb-6 text-gray-800">Estoque</h1>
+            <ProductCard products={sampleProducts} />
+          </main>
+        );
+      case "Relatórios":
+        return (
+          <main className="bg-gray-50 p-6 overflow-auto h-full">
+            <h1 className="text-2xl font-bold mb-6 text-gray-800">Relatórios</h1>
+          </main>
+        );
+      case "Configurações":
+        return (
+          <main className="bg-gray-50 p-6 overflow-auto h-full">
+            <h1 className="text-2xl font-bold mb-6 text-gray-800">Configurações</h1>
+            <div className="flex flex-col gap-4">
+              <label className="font-semibold">Upload de Logo (612 x 130px)</label>
+              <input type="file" accept="image/*" onChange={handleLogoUpload} />
+            </div>
+          </main>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex h-screen">
-      {/* Passando 'estoque' como opção ativa */}
-      <Sidebar active="Estoque" />
-
-      <div className="relative flex-1">
-        <main className="bg-gray-50 p-6 overflow-auto h-full">
-          <h1 className="text-2xl font-bold mb-6 text-gray-800">Estoque</h1>
-          <ProductCard products={sampleProducts} />
-        </main>
-
-        <div
-          className="absolute top-0 right-0 h-full"
-          style={{
-            width: "3px",
-            background: "#5e5e5e",
-            boxShadow: "1px 0 3px rgba(0,0,0,0.1)",
-          }}
-        />
-      </div>
+      <Sidebar active={activePage} onNavigate={setActivePage} logoSrc={logoSrc} />
+      <div className="flex-1">{renderPage()}</div>
     </div>
   );
 }

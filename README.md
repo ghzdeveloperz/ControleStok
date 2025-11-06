@@ -5,8 +5,11 @@ Este Projeto passou por uma reforma na página de Estoque.
 ## Principais Melhorias
 
 -- ATUALIZAÇÕES ESPECIAIS PARA PÁGINA ESTOQUE --
-- armazenamento local (por hora)
-- favicon da marca mais Nome oficial
+- seção de Configurações 
+- seção de Relatórios
+- seção de Estoque
+- Rodapé de usuário
+- foto de perfil e banner
 
 ## Tecnologias Utilizadas
 
