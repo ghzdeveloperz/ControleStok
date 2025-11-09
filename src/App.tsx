@@ -5,29 +5,34 @@ import { Estoque } from "./pages/Estoque";
 import Relatorios from "./pages/Relatorios";
 import { Configuracoes } from "./pages/Configuracoes";
 import { Auth, AuthUserData } from "./pages/Auth";
-import { LoadingProvider, useLoading } from "./contexts/LoadingContext";
+import { LoadingProvider } from "./contexts/LoadingContext";
 
 export const AppContent: React.FC = () => {
   const [user, setUser] = useState<AuthUserData | null>(null);
   const [activePage, setActivePage] = useState<"Estoque" | "Relatórios" | "Configurações">("Estoque");
 
-  // Carrega logo e perfil com fallback
-  const [logoSrc, setLogoSrc] = useState(localStorage.getItem("appLogo") ?? "/images/sua-logo.png");
+  // Logo principal
+  const [logoSrc, setLogoSrc] = useState(
+    localStorage.getItem("appLogo") ?? "/images/sua-logo.png"
+  );
 
-  // Corrige cache ao carregar imagem salva — já aplica novo timestamp a cada render
+  // Imagem de perfil com quebra de cache
   const storedProfile = localStorage.getItem("profileImage");
   const [profileSrc, setProfileSrc] = useState(
     storedProfile ? `${storedProfile}?t=${Date.now()}` : "/images/profile-200.jpg"
   );
 
   const [userID, setUserID] = useState("xxxxx");
-  const { showLoading, hideLoading } = useLoading();
 
-  // Função de logout
   const handleLogout = () => {
     setUser(null);
     setProfileSrc("/images/profile-200.jpg");
+    setLogoSrc("/images/sua-logo.png");
     setUserID("xxxxx");
+
+    // limpa localStorage
+    localStorage.removeItem("profileImage");
+    localStorage.removeItem("appLogo");
   };
 
   // Se não está logado, exibe tela de login
@@ -39,9 +44,9 @@ export const AppContent: React.FC = () => {
           setUserID(data.email ?? "xxxxx");
 
           if (data.photoURL) {
-            const newProfile = `${data.photoURL}?t=${Date.now()}`; // quebra cache
+            const newProfile = `${data.photoURL}?t=${Date.now()}`;
             setProfileSrc(newProfile);
-            localStorage.setItem("profileImage", data.photoURL); // salva a URL original, SEM timestamp
+            localStorage.setItem("profileImage", data.photoURL);
           } else {
             setProfileSrc("/images/profile-200.jpg");
           }
@@ -72,7 +77,7 @@ export const AppContent: React.FC = () => {
             onProfileChange={(newProfile) => {
               const updatedProfile = `${newProfile}?t=${Date.now()}`;
               setProfileSrc(updatedProfile);
-              localStorage.setItem("profileImage", newProfile); // sempre salva **sem** timestamp
+              localStorage.setItem("profileImage", newProfile);
             }}
             onLogout={handleLogout}
           />
