@@ -4,16 +4,16 @@ import { Sidebar } from "./components/Sidebar";
 import { Estoque } from "./pages/Estoque";
 import Relatorios from "./pages/Relatorios";
 import { Configuracoes } from "./pages/Configuracoes";
-import { Auth, AuthUserData } from "./pages/Auth";
 import { LoadingProvider } from "./contexts/LoadingContext";
 
 export const AppContent: React.FC = () => {
-  const [user, setUser] = useState<AuthUserData | null>(null);
-  const [activePage, setActivePage] = useState<"Estoque" | "Relatórios" | "Configurações">("Estoque");
+  const [activePage, setActivePage] = useState<
+    "Estoque" | "Relatórios" | "Configurações"
+  >("Estoque");
 
   // Logo principal
   const [logoSrc, setLogoSrc] = useState(
-    localStorage.getItem("appLogo") ?? "/images/sua-logo.png"
+    localStorage.getItem("appLogo") ?? "/images/jinjin.png"
   );
 
   // Imagem de perfil com quebra de cache
@@ -22,38 +22,17 @@ export const AppContent: React.FC = () => {
     storedProfile ? `${storedProfile}?t=${Date.now()}` : "/images/profile-200.jpg"
   );
 
-  const [userID, setUserID] = useState("xxxxx");
+  // Sem login → define um ID padrão
+  const [userID] = useState("usuário");
 
   const handleLogout = () => {
-    setUser(null);
-    setProfileSrc("/images/profile-200.jpg");
-    setLogoSrc("/images/sua-logo.png");
-    setUserID("xxxxx");
-
-    // limpa localStorage
+    // Agora o "logout" só limpa imagens
     localStorage.removeItem("profileImage");
     localStorage.removeItem("appLogo");
+
+    setLogoSrc("/images/jinjin.png");
+    setProfileSrc("/images/profile-200.jpg");
   };
-
-  // Se não está logado, exibe tela de login
-  if (!user) {
-    return (
-      <Auth
-        onLogin={(data) => {
-          setUser(data);
-          setUserID(data.email ?? "xxxxx");
-
-          if (data.photoURL) {
-            const newProfile = `${data.photoURL}?t=${Date.now()}`;
-            setProfileSrc(newProfile);
-            localStorage.setItem("profileImage", data.photoURL);
-          } else {
-            setProfileSrc("/images/profile-200.jpg");
-          }
-        }}
-      />
-    );
-  }
 
   return (
     <div className="flex h-screen">
@@ -92,3 +71,4 @@ export const App: React.FC = () => (
     <AppContent />
   </LoadingProvider>
 );
+  
