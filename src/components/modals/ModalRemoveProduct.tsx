@@ -45,7 +45,7 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
     // chama função do pai para atualizar quantidade
     onRemove(selectedProductId, Number(quantity), dateStr);
 
-    // salva movimentação no DB
+    // salva movimentação no DB com custo
     try {
       await saveMovement({
         productId: selectedProductId,
@@ -53,12 +53,13 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
         quantity: Number(quantity),
         type: "remove",
         date: dateStr,
+        price: product.price ?? 0,  // valor do produto
+        cost: product.price ?? 0,   // custo usado para cálculos
       });
     } catch (err) {
       console.error("Erro ao salvar movimentação:", err);
     } finally {
       setLoading(false);
-      // reset campos
       setQuantity("");
       setExitDate(null);
       setSelectedProductId(filteredProducts[0]?.id ?? null);

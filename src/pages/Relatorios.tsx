@@ -27,6 +27,8 @@ interface ProductDayMovement {
   add: number;
   remove: number;
   total: number;
+  addValue: number;
+  removeValue: number;
 }
 
 interface DailyProductMovements {
@@ -60,7 +62,6 @@ const Relatorios: React.FC = () => {
     loadMovements();
   }, [selectedMonth, selectedYear]);
 
-  // Garante que os dados do gráfico mensal usem Entradas/Saídas
   const dailyData = useMemo(() => {
     const days = daysInMonth(selectedMonth, selectedYear);
     const base = Array.from({ length: days }, (_, i) => ({
@@ -81,14 +82,31 @@ const Relatorios: React.FC = () => {
   }, [movements, selectedMonth, selectedYear]);
 
   const monthlySummary = useMemo(() => {
-    const entradas = movements
+    const entradasQty = movements
       .filter((m) => m.type === "add")
       .reduce((sum, m) => sum + m.quantity, 0);
-    const saidas = movements
+    const entradasValue = movements
+      .filter((m) => m.type === "add")
+      .reduce((sum, m) => sum + m.quantity * (Number(m.price) || 0), 0);
+
+    const saidasQty = movements
       .filter((m) => m.type === "remove")
       .reduce((sum, m) => sum + m.quantity, 0);
-    const liquido = entradas - saidas;
-    return { entradas, saidas, liquido };
+    const saidasValue = movements
+      .filter((m) => m.type === "remove")
+      .reduce((sum, m) => sum + m.quantity * (Number(m.price) || 0), 0);
+
+    const liquidoQty = entradasQty - saidasQty;
+    const liquidoValue = entradasValue - saidasValue;
+
+    return {
+      entradasQty,
+      entradasValue,
+      saidasQty,
+      saidasValue,
+      liquidoQty,
+      liquidoValue,
+    };
   }, [movements]);
 
   const productMovementsByDay: DailyProductMovements[] = useMemo(() => {
@@ -102,40 +120,40 @@ const Relatorios: React.FC = () => {
       );
 
       const products: ProductDayMovement[] = initialProducts.map((p) => {
-        const add = movements
-          .filter(
-            (m) =>
-              m.productId === p.id &&
-              m.type === "add" &&
-              Number(m.date.split("-")[2]) === day
-          )
-          .reduce((sum, m) => sum + m.quantity, 0);
+        const addMovements = movements.filter(
+          (m) =>
+            m.productId === p.id &&
+            m.type === "add" &&
+            Number(m.date.split("-")[2]) === day
+        );
+        const removeMovements = movements.filter(
+          (m) =>
+            m.productId === p.id &&
+            m.type === "remove" &&
+            Number(m.date.split("-")[2]) === day
+        );
 
-        const remove = movements
-          .filter(
-            (m) =>
-              m.productId === p.id &&
-              m.type === "remove" &&
-              Number(m.date.split("-")[2]) === day
-          )
-          .reduce((sum, m) => sum + m.quantity, 0);
+        const addQty = addMovements.reduce((sum, m) => sum + m.quantity, 0);
+        const removeQty = removeMovements.reduce((sum, m) => sum + m.quantity, 0);
+        const addValue = addMovements.reduce((sum, m) => sum + m.quantity * (Number(m.price) || 0), 0);
+        const removeValue = removeMovements.reduce((sum, m) => sum + m.quantity * (Number(m.price) || 0), 0);
 
         return {
           id: p.id,
           name: p.name,
           image: p.image,
-          add,
-          remove,
-          total: add + remove,
+          add: addQty,
+          remove: removeQty,
+          total: addQty + removeQty,
+          addValue,
+          removeValue,
         };
       });
 
       daily.push({
         day,
         dateLabel,
-        products: products
-          .filter((p) => p.total > 0)
-          .sort((a, b) => b.total - a.total),
+        products: products.filter((p) => p.total > 0).sort((a, b) => b.total - a.total),
       });
     }
 
@@ -167,10 +185,7 @@ const Relatorios: React.FC = () => {
   const reportTitle = format(selectedDate, "LLLL yyyy", { locale: ptBR }).toUpperCase();
 
   return (
-    <div
-      ref={containerRef}
-      className="p-6 w-full overflow-auto h-full bg-gray-50"
-    >
+    <div ref={containerRef} className="p-6 w-full overflow-auto h-full bg-gray-50">
       <h1 className="text-3xl font-bold mb-6">
         Relatório de Movimentação —{" "}
         <span className="text-lime-900">{reportTitle}</span>
@@ -192,19 +207,34 @@ const Relatorios: React.FC = () => {
         <div className="text-gray-500">Carregando...</div>
       ) : (
         <>
-          {/* Resumo mensal */}
+
           <div className="mb-6 grid grid-cols-3 gap-4">
             <div className="bg-green-100 text-green-900 rounded shadow p-4 text-center">
               <div className="text-sm">Entradas</div>
-              <div className="font-bold text-xl">{monthlySummary.entradas}</div>
+              <div className="font-bold text-xl">
+                {monthlySummary.entradasQty} <br />
+                <span className="text-base font-semibold">
+                  R$ {monthlySummary.entradasValue.toFixed(2)}
+                </span>
+              </div>
             </div>
             <div className="bg-red-100 text-red-900 rounded shadow p-4 text-center">
               <div className="text-sm">Saídas</div>
-              <div className="font-bold text-xl">{monthlySummary.saidas}</div>
+              <div className="font-bold text-xl">
+                {monthlySummary.saidasQty} <br />
+                <span className="text-base font-semibold">
+                  R$ {monthlySummary.saidasValue.toFixed(2)}
+                </span>
+              </div>
             </div>
             <div className="bg-gray-100 text-gray-900 rounded shadow p-4 text-center">
               <div className="text-sm">Líquido</div>
-              <div className="font-bold text-xl">{monthlySummary.liquido}</div>
+              <div className="font-bold text-xl">
+                {monthlySummary.liquidoQty} <br />
+                <span className="text-base font-semibold">
+                  R$ {monthlySummary.liquidoValue.toFixed(2)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -243,9 +273,8 @@ const Relatorios: React.FC = () => {
                     ref={(el) => {
                       if (el) dayRefs.current[day.day] = el;
                     }}
-                    className={`transition-colors duration-500 ${
-                      highlightedDay === day.day ? "bg-yellow-100" : ""
-                    }`}
+                    className={`transition-colors duration-500 ${highlightedDay === day.day ? "bg-yellow-100" : ""
+                      }`}
                   >
                     <h2 className="text-lg font-semibold mb-2">{day.dateLabel}</h2>
                     <div className="space-y-4">
@@ -254,13 +283,26 @@ const Relatorios: React.FC = () => {
                           key={p.id ?? p.name}
                           className="bg-white rounded shadow p-4 flex flex-col gap-2"
                         >
-                          <div className="flex items-center gap-3 mb-2">
-                            <img
-                              src={p.image ?? "/images/default.png"}
-                              alt={p.name}
-                              className="w-12 h-12 object-cover rounded"
-                            />
-                            <span className="font-semibold text-gray-800">{p.name}</span>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={p.image ?? "/images/default.png"}
+                                alt={p.name}
+                                className="w-12 h-12 object-cover rounded"
+                              />
+                              <span className="font-semibold text-gray-800">{p.name}</span>
+                            </div>
+                            <div className="flex gap-4">
+                              <span className="text-green-600 font-semibold">
+                                R$ {p.addValue.toFixed(2)}
+                              </span>
+                              <span className="text-red-600 font-semibold">
+                                R$ {p.removeValue.toFixed(2)}
+                              </span>
+                              <span className="text-gray-800 font-semibold">
+                                R$ {(p.addValue - p.removeValue).toFixed(2)}
+                              </span>
+                            </div>
                           </div>
                           <div style={{ width: "100%", height: "70px" }}>
                             <ResponsiveContainer width="100%" height="100%">
