@@ -1,37 +1,20 @@
 // src/hooks/useProducts.ts
 import { useEffect, useState } from "react";
-import { ProductQuantity, getProducts, onProductsUpdate } from "../firebase/firestore/products";
-
-let globalSetProducts: ((products: ProductQuantity[]) => void) | null = null;
-
-export const updateProducts = (products: ProductQuantity[]) => {
-  if (globalSetProducts) globalSetProducts(products);
-};
+import { ProductQuantity, onProductsUpdate } from "../firebase/firestore/products";
 
 export const useProducts = () => {
   const [products, setProducts] = useState<ProductQuantity[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    globalSetProducts = setProducts; // define global para updateProducts
-    let unsubscribe: (() => void) | undefined;
+    // Firestore listener — única fonte de dados
+    const unsubscribe = onProductsUpdate((updatedProducts) => {
+      setProducts(updatedProducts);
+      setLoading(false); // carregamento concluído
+    });
 
-    const load = async () => {
-      const initialProducts = await getProducts();
-      setProducts(initialProducts);
-      setLoading(false);
-
-      unsubscribe = onProductsUpdate((updatedProducts) => {
-        setProducts(updatedProducts);
-      });
-    };
-
-    load();
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-      globalSetProducts = null;
-    };
+    // remove o listener ao desmontar o componente
+    return () => unsubscribe();
   }, []);
 
   return { products, loading };

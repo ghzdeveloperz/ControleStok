@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Product } from "../ProductCard";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -6,7 +6,7 @@ import "react-datepicker/dist/react-datepicker.css";
 interface ModalRemoveProductProps {
   products: Product[];
   onClose: () => void;
-  onRemove: (productId: string, quantity: number) => void;
+  onRemove: (productId: string, quantity: number, date?: string) => Promise<void>;
 }
 
 export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
@@ -22,12 +22,28 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   const [exitDate, setExitDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // ---------- 🔥 SINCRONIZA SELECT COM CAMPO DE BUSCA ----------
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  useEffect(() => {
+    if (filteredProducts.length > 0) {
+      setSelectedProductId(String(filteredProducts[0].id));
+    } else {
+      setSelectedProductId("");
+    }
+  }, [search, products]);
+  // -------------------------------------------------------------
+
+  useEffect(() => {
+    if (products.length > 0 && !products.find(p => String(p.id) === selectedProductId)) {
+      setSelectedProductId(String(products[0].id));
+    }
+  }, [products, selectedProductId]);
+
   const handleRemove = async () => {
-    if (!selectedProductId || quantity === "" || !exitDate) return;
+    if (!selectedProductId || quantity === "") return;
 
     const product = products.find((p) => String(p.id) === selectedProductId);
     if (!product) return;
@@ -38,14 +54,25 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
     }
 
     setLoading(true);
-    onRemove(selectedProductId, Number(quantity));
 
-    setLoading(false);
-    setQuantity("");
-    setExitDate(null);
-    setSelectedProductId(filteredProducts[0]?.id ?? "");
-    setSearch("");
-    onClose();
+    const dateStr = exitDate
+      ? exitDate.toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0];
+
+    try {
+      await onRemove(selectedProductId, Number(quantity), dateStr);
+
+      setQuantity("");
+      setExitDate(null);
+      setSearch("");
+      setSelectedProductId(filteredProducts[0]?.id ?? "");
+      onClose();
+    } catch (err) {
+      console.error("Erro ao remover item:", err);
+      alert("Erro ao remover produto. Veja console.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -89,7 +116,7 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
             selected={exitDate}
             onChange={(date) => setExitDate(date)}
             className="cursor-pointer px-3 py-2 border rounded w-full"
-            placeholderText="Escolha a data de saída"
+            placeholderText="Escolha a data de saída (opcional)"
             dateFormat="yyyy-MM-dd"
           />
         </div>

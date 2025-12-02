@@ -12,7 +12,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ logoSrc, profileSrc, userId, lowStockCount = 0, zeroStockCount = 0 }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   const sidebarWidth = collapsed ? 80 : 256;
   const navigate = useNavigate();
   const location = useLocation();

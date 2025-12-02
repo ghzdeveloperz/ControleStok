@@ -1,3 +1,4 @@
+// src/components/modals/ModalConfirmRemove.tsx
 import React from "react";
 import { Product } from "../ProductCard";
 
@@ -33,13 +34,13 @@ export const ModalConfirmRemove: React.FC<Props> = ({
         <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition"
+            className="px-4 py-2 bg-gray-300 rounded cursor-pointer hover:bg-gray-400 transition"
           >
             Cancelar
           </button>
           <button
             onClick={handleConfirm}
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+            className="px-4 py-2 bg-red-600 text-white rounded cursor-pointer hover:bg-red-700 transition"
           >
             Remover
           </button>

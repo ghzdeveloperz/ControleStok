@@ -1,4 +1,5 @@
 // src/firebase/firestore/products.ts
+
 import {
   collection,
   addDoc,
@@ -8,8 +9,12 @@ import {
   updateDoc,
   getDoc,
   DocumentData,
+  query,
+  where,
+  onSnapshot,
+  writeBatch,
+  serverTimestamp
 } from "firebase/firestore";
-
 import { db } from "../firebase";
 
 // ------------------------------------------------------
@@ -21,7 +26,6 @@ export interface ProductQuantity {
   quantity: number;
   cost?: number;
   unitPrice?: number;
-
   name: string;
   category?: string;
   image?: string | null;
@@ -45,40 +49,36 @@ export interface StockMovement {
 
 const quantitiesRef = collection(db, "quantities");
 const movementsRef = collection(db, "movements");
+const categoriesRef = collection(db, "categories");
 
 // ------------------------------------------------------
-// SISTEMA DE LISTENERS
+// LISTENER OFICIAL (real-time update)
 // ------------------------------------------------------
 
-let productListeners: Array<(products: ProductQuantity[]) => void> = [];
+export const onProductsUpdate = (callback: (products: ProductQuantity[]) => void) => {
+  return onSnapshot(quantitiesRef, (snapshot) => {
+    const products = snapshot.docs.map((docSnap) => {
+      const data = docSnap.data() as DocumentData;
 
-export const onProductsUpdate = (listener: (products: ProductQuantity[]) => void) => {
-  productListeners.push(listener);
+      return {
+        id: docSnap.id,
+        quantity: Number(data.quantity ?? 0),
+        cost: Number(data.cost ?? 0),
+        unitPrice: Number(data.unitPrice ?? data.cost ?? 0),
+        name: String(data.name ?? "Sem nome"),
+        category: String(data.category ?? "Sem categoria"),
+        image: data.image ?? null,
+        minStock: Number(data.minStock ?? 0),
+      };
+    });
 
-  return () => {
-    productListeners = productListeners.filter((l) => l !== listener);
-  };
+    callback(products);
+  });
 };
 
-export const notifyProducts = async () => {
-  const products = await getProducts();
-  productListeners.forEach((listener) => listener(products));
-};
-
 // ------------------------------------------------------
-// FUNÇÕES DE PRODUTO
+// GET PRODUCTS
 // ------------------------------------------------------
-
-export const saveProduct = async (product: Omit<ProductQuantity, "id">) => {
-  if (!product.name || product.quantity === undefined) {
-    throw new Error("Produto inválido: dados incompletos.");
-  }
-
-  const docRef = await addDoc(quantitiesRef, product);
-  await notifyProducts();
-
-  return { ...product, id: docRef.id };
-};
 
 export const getProducts = async (): Promise<ProductQuantity[]> => {
   const snapshot = await getDocs(quantitiesRef);
@@ -99,89 +99,156 @@ export const getProducts = async (): Promise<ProductQuantity[]> => {
   });
 };
 
-export const removeProduct = async (id: string) => {
-  await deleteDoc(doc(db, "quantities", id));
-  await notifyProducts();
+// ------------------------------------------------------
+// SALVAR NOVO PRODUTO
+// ------------------------------------------------------
+
+export const saveProduct = async (product: Omit<ProductQuantity, "id">) => {
+  const docRef = await addDoc(quantitiesRef, product);
+  return { ...product, id: docRef.id };
 };
 
 // ------------------------------------------------------
-// MOVIMENTOS + ATUALIZA QUANTIDADE
+// REMOVER TODOS OS MOVIMENTOS DO PRODUTO
 // ------------------------------------------------------
 
-export const saveMovement = async (data: Omit<StockMovement, "id">): Promise<StockMovement> => {
-  const movementDocRef = await addDoc(movementsRef, data);
+export const removeProductMovements = async (productId: string) => {
+  const q = query(movementsRef, where("productId", "==", productId));
+  const snapshot = await getDocs(q);
+  const batch = writeBatch(db);
 
-  if (!data.productId) {
-    throw new Error("ID do produto não fornecido.");
-  }
+  snapshot.docs.forEach((movement) => {
+    batch.delete(doc(db, "movements", movement.id));
+  });
 
+  await batch.commit();
+};
+
+// ------------------------------------------------------
+// REMOVER PRODUTO COMPLETO
+// ------------------------------------------------------
+
+export const removeProduct = async (id: string) => {
+  await removeProductMovements(id);
+  await deleteDoc(doc(db, "quantities", id));
+};
+
+// ------------------------------------------------------
+// ★★★ SALVAR MOVIMENTO (CORRIGIDO — SEM BLOQUEIO DE DUPLICADOS) ★★★
+// ------------------------------------------------------
+
+export const saveMovement = async (
+  data: Omit<StockMovement, "id">
+): Promise<StockMovement> => {
+
+  // 🔥 Converte corretamente a data para um Date real
+  const convertedDate = new Date(data.date + "T00:00:00");
+
+  // 🔥 Salva o movimento SEM BLOQUEAR DUPLICADOS
+  const movementDocRef = await addDoc(movementsRef, {
+    ...data,
+    timestamp: serverTimestamp(),
+    realDate: convertedDate,
+    day: data.date
+  });
+
+  // Atualiza o estoque
   const productRef = doc(db, "quantities", data.productId);
   const productSnap = await getDoc(productRef);
 
-  if (!productSnap.exists()) {
-    throw new Error("Produto não encontrado. Só é possível mover produtos existentes.");
-  }
+  if (!productSnap.exists()) throw new Error("Produto não encontrado.");
 
-  const prodData = productSnap.data() as DocumentData;
+  const prod = productSnap.data() as DocumentData;
 
-  const product: ProductQuantity = {
-    id: productSnap.id,
-    quantity: Number(prodData.quantity ?? 0),
-    cost: Number(prodData.cost ?? 0),
-    unitPrice: Number(prodData.unitPrice ?? prodData.cost ?? 0),
-    name: String(prodData.name ?? "Sem nome"),
-    category: String(prodData.category ?? "Sem categoria"),
-    image: prodData.image ?? null,
-    minStock: Number(prodData.minStock ?? 0),
-  };
-
-  const updatedQuantity = data.type === "add" ? product.quantity + data.quantity : product.quantity - data.quantity;
+  const newQuantity =
+    data.type === "add"
+      ? Number(prod.quantity ?? 0) + data.quantity
+      : Number(prod.quantity ?? 0) - data.quantity;
 
   await updateDoc(productRef, {
-    quantity: updatedQuantity,
+    quantity: newQuantity,
     cost: data.cost,
     unitPrice: data.price,
   });
-
-  await notifyProducts();
 
   return { ...data, id: movementDocRef.id };
 };
 
 // ------------------------------------------------------
-// BUSCAR TODOS OS MOVIMENTOS
+// ENTRADA DE PRODUTO (1 movimento somente)
+// ------------------------------------------------------
+
+export const addProductToStock = async (
+  productId: string,
+  productName: string,
+  quantity: number,
+  cost: number,
+  unitPrice: number,
+  date?: string
+) => {
+  const movementDate = date ?? new Date().toISOString().split("T")[0];
+
+  return await saveMovement({
+    productId,
+    productName,
+    quantity,
+    cost,
+    price: unitPrice,
+    type: "add",
+    date: movementDate,
+  });
+};
+
+// ------------------------------------------------------
+// LISTAR MOVIMENTOS
 // ------------------------------------------------------
 
 export const getAllMovements = async (): Promise<StockMovement[]> => {
   const snapshot = await getDocs(movementsRef);
-
   return snapshot.docs.map((docSnap) => {
     const data = docSnap.data() as DocumentData;
-
     return {
       id: docSnap.id,
-      productId: String(data.productId ?? ""),
-      productName: String(data.productName ?? ""),
-      quantity: Number(data.quantity ?? 0),
-      price: Number(data.price ?? 0),
-      cost: Number(data.cost ?? 0),
-      type: data.type === "add" ? "add" : "remove",
-      date: String(data.date ?? ""),
+      productId: data.productId,
+      productName: data.productName,
+      quantity: data.quantity,
+      price: data.price,
+      cost: data.cost,
+      type: data.type,
+      date: data.date,
     };
   });
 };
 
 // ------------------------------------------------------
-// ALTERNATIVA: FETCH DIRETO
+// CATEGORIAS
+// ------------------------------------------------------
+
+export const saveCategory = async (name: string) => {
+  const formatted = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+  await addDoc(categoriesRef, { name: formatted });
+};
+
+export const getCategories = async (): Promise<string[]> => {
+  const snapshot = await getDocs(categoriesRef);
+  return snapshot.docs.map((doc) => doc.data().name as string);
+};
+
+export const onCategoriesUpdate = (callback: (categories: string[]) => void) => {
+  return onSnapshot(categoriesRef, (snapshot) => {
+    callback(snapshot.docs.map((doc) => doc.data().name as string));
+  });
+};
+
+// ------------------------------------------------------
+// FETCH DIRETO DE PRODUTOS
 // ------------------------------------------------------
 
 export const fetchProducts = async (): Promise<ProductQuantity[]> => {
   try {
     const snapshot = await getDocs(quantitiesRef);
-
     return snapshot.docs.map((docSnap) => {
-      const data = docSnap.data();
-
+      const data = docSnap.data() as DocumentData;
       return {
         id: docSnap.id,
         quantity: Number(data.quantity ?? 0),
@@ -193,8 +260,8 @@ export const fetchProducts = async (): Promise<ProductQuantity[]> => {
         minStock: Number(data.minStock ?? 0),
       };
     });
-  } catch (err) {
-    console.error("Erro ao buscar produtos:", err);
+  } catch (error) {
+    console.error("Erro ao buscar produtos:", error);
     return [];
   }
 };

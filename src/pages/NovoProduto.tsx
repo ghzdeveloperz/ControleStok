@@ -1,17 +1,20 @@
 // src/pages/NovoProduto.tsx
-import React, { useState } from "react";
+"use client";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaPlus } from "react-icons/fa";
 
 import { ModalAddCategory } from "../components/modals/ModalAddCategory";
 import { AlertBanner } from "../components/AlertBanner";
+
 import {
   saveProduct,
-  getProducts,
   ProductQuantity,
+  addProductToStock,
+  getCategories,
+  saveCategory,
+  onCategoriesUpdate,
 } from "../firebase/firestore/products";
-
-import { updateProducts } from "../hooks/useProducts"; // ← CORRETO
 
 export const NovoProduto: React.FC = () => {
   const navigate = useNavigate();
@@ -20,42 +23,34 @@ export const NovoProduto: React.FC = () => {
   const [category, setCategory] = useState("");
   const [quantity, setQuantity] = useState<number | "">("");
   const [price, setPrice] = useState<string>("");
+
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
-  const [alert, setAlert] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
+  const [alert, setAlert] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  const [categoriasExistentes, setCategoriasExistentes] = useState([
-    "Brasileiros",
-    "Asiáticos",
-    "Sushi",
-    "Limpeza",
-    "Frios",
-  ]);
-
+  const [categoriasExistentes, setCategoriasExistentes] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const capitalize = (text: string) =>
-    text
-      ? text
-          .split(" ")
-          .map(
-            (word) =>
-              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-          )
-          .join(" ")
-      : "";
+  // -------------------------------
+  // CATEGORIAS
+  // -------------------------------
+  useEffect(() => {
+    const fetchCats = async () => {
+      const cats = await getCategories();
+      setCategoriasExistentes(cats);
+    };
+    fetchCats();
+
+    const unsub = onCategoriesUpdate((cats) => setCategoriasExistentes(cats));
+    return () => unsub();
+  }, []);
 
   const formatCurrency = (value: string) => {
     const clean = value.replace(/\D/g, "");
     const number = Number(clean) / 100;
-    return number.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    });
+    return number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   };
 
   const parseCurrency = (formatted: string) => {
@@ -64,17 +59,26 @@ export const NovoProduto: React.FC = () => {
     return isNaN(number) ? 0 : number;
   };
 
+  const capitalize = (text: string) =>
+    text
+      ? text
+          .split(" ")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(" ")
+      : "";
+
   const handleImageChange = (file: File | null) => {
     setImage(file);
     if (file) {
       const reader = new FileReader();
       reader.onload = () => setPreview(reader.result as string);
       reader.readAsDataURL(file);
-    } else {
-      setPreview(null);
-    }
+    } else setPreview(null);
   };
 
+  // -------------------------------
+  // SALVAR PRODUTO
+  // -------------------------------
   const handleSave = async () => {
     if (!name || !category || quantity === "" || price === "") {
       setAlert({ message: "Preencha todos os campos!", type: "error" });
@@ -87,10 +91,11 @@ export const NovoProduto: React.FC = () => {
     const parsedPrice = parseCurrency(price);
     const parsedQuantity = Number(quantity) || 0;
 
+    // 🔥 FIX PRINCIPAL: SALVA PRODUTO COM QUANTIDADE 0
     const newProduct: Omit<ProductQuantity, "id"> = {
       name: capitalize(name),
       category: capitalize(category),
-      quantity: parsedQuantity,
+      quantity: 0, // <<<<<<<<<<<<<<<<<<<<<<<< FIX QUE IMPEDIU DOBRAR
       cost: parsedPrice,
       unitPrice: parsedPrice,
       image: preview ? String(preview) : null,
@@ -98,13 +103,22 @@ export const NovoProduto: React.FC = () => {
     };
 
     try {
-      await saveProduct(newProduct);
+      // Salva produto no Firestore
+      const productRef = await saveProduct(newProduct);
 
-      const allProducts = await getProducts();
-      updateProducts(allProducts); // ← AGORA CORRETO
+      // Movimento inicial (apenas UM!)
+      if (parsedQuantity > 0) {
+        await addProductToStock(
+          productRef.id,
+          newProduct.name,
+          parsedQuantity,
+          parsedPrice,
+          parsedPrice
+        );
+      }
 
       setAlert({ message: "Produto adicionado!", type: "success" });
-      setTimeout(() => setAlert(null), 2000);
+      setTimeout(() => setAlert(null), 1500);
 
       navigate("/estoque");
     } catch (err) {
@@ -116,9 +130,11 @@ export const NovoProduto: React.FC = () => {
     setLoading(false);
   };
 
-  const handleAddCategory = (name: string) => {
+  const handleAddCategory = async (name: string) => {
     const capitalized = capitalize(name);
-    setCategoriasExistentes((prev) => [...prev, capitalized]);
+    if (!categoriasExistentes.includes(capitalized)) {
+      await saveCategory(capitalized);
+    }
     setCategory(capitalized);
     setModalOpen(false);
   };
@@ -130,7 +146,7 @@ export const NovoProduto: React.FC = () => {
       <h1 className="text-3xl font-semibold mb-8">Adicionar Novo Produto</h1>
 
       <div className="flex flex-col gap-8 w-full">
-        {/* CARD DE IMAGEM */}
+        {/* IMAGEM */}
         <div className="w-full flex flex-col items-center bg-white shadow-sm rounded-2xl p-6 border border-gray-200">
           {preview ? (
             <img
@@ -141,15 +157,11 @@ export const NovoProduto: React.FC = () => {
           ) : (
             <label className="w-full max-w-sm h-64 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 hover:border-lime-600 hover:bg-gray-100 cursor-pointer transition">
               <FaPlus className="text-gray-400 text-5xl mb-2" />
-              <span className="text-gray-500 text-sm font-medium">
-                Selecionar imagem
-              </span>
+              <span className="text-gray-500 text-sm font-medium">Selecionar imagem</span>
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) =>
-                  handleImageChange(e.target.files?.[0] ?? null)
-                }
+                onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
                 className="hidden"
               />
             </label>
@@ -160,16 +172,14 @@ export const NovoProduto: React.FC = () => {
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) =>
-                  handleImageChange(e.target.files?.[0] ?? null)
-                }
+                onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
                 className="hidden"
               />
             </label>
           )}
         </div>
 
-        {/* FORMULÁRIO */}
+        {/* FORM */}
         <div className="flex-1 bg-white shadow-sm rounded-2xl p-8 border border-gray-200">
           <div className="flex flex-col gap-7">
             <div className="flex flex-col gap-1">
@@ -217,9 +227,7 @@ export const NovoProduto: React.FC = () => {
                 placeholder="0"
                 value={quantity === "" ? "" : quantity}
                 onChange={(e) =>
-                  setQuantity(
-                    e.target.value === "" ? "" : Number(e.target.value)
-                  )
+                  setQuantity(e.target.value === "" ? "" : Number(e.target.value))
                 }
                 className="px-4 py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black/10 outline-none"
               />

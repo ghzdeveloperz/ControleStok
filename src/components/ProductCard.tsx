@@ -1,3 +1,4 @@
+// src/components/ProductCard.tsx
 import React from "react";
 import { removeProduct, ProductQuantity } from "../firebase/firestore/products";
 
@@ -10,7 +11,10 @@ export interface Product extends ProductQuantity {
 interface ProductCardProps {
   products: Product[];
   removeMode?: boolean;
+
+  // ⬅ onRemove AGORA TIPADO CORRETAMENTE
   onRemove?: (productId: string) => void;
+
   onSelect?: (product: Product) => void;
   setProducts?: React.Dispatch<React.SetStateAction<Product[]>>;
 }
@@ -22,11 +26,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onSelect,
   setProducts,
 }) => {
+  
   const handleRemove = async (id: string) => {
     try {
       await removeProduct(id);
-      if (setProducts) setProducts(prev => prev.filter(p => p.id !== id));
-      onRemove?.(id);
+
+      // atualiza estado local (evita duplicações)
+      if (setProducts) {
+        setProducts(prev => prev.filter(p => p.id !== id));
+      }
+
+      // dispara callback se existir
+      if (onRemove) onRemove(id);
+
     } catch (err) {
       console.error("Erro ao remover produto:", err);
     }
@@ -43,7 +55,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         // Lógica de status atualizada
         let status = "OK";
         if (safeQuantity === 0) status = "Zerado";
-        else if (safeQuantity <= 10) status = "Baixo"; // baixo a partir de 10 unidades
+        else if (safeQuantity <= 10) status = "Baixo";
 
         const statusIndicatorClasses: Record<string, string> = {
           OK: "bg-green-600 text-white",
@@ -67,8 +79,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
             <div className="p-3 flex flex-col gap-1 sm:p-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm sm:text-base font-semibold text-gray-800">{product.name}</h2>
-                <span className="text-xs sm:text-sm text-gray-500">{product.category ?? "Sem categoria"}</span>
+                <h2 className="text-sm sm:text-base font-semibold text-gray-800">
+                  {product.name}
+                </h2>
+                <span className="text-xs sm:text-sm text-gray-500">
+                  {product.category ?? "Sem categoria"}
+                </span>
               </div>
 
               <div className="flex items-center justify-between">
@@ -80,11 +96,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </p>
               </div>
 
-              <p className="text-xs sm:text-sm text-gray-700">Preço médio: R$ {safeUnitPrice.toFixed(2)}</p>
+              <p className="text-xs sm:text-sm text-gray-700">
+                Preço médio: R$ {safeUnitPrice.toFixed(2)}
+              </p>
 
               <p className="text-xs sm:text-sm font-semibold flex items-center gap-2">
                 Status:{" "}
-                <span className={`px-2 py-0.5 rounded text-white text-[0.7rem] ${statusIndicatorClasses[status]}`}>
+                <span
+                  className={`px-2 py-0.5 rounded text-white text-[0.7rem] ${statusIndicatorClasses[status]}`}
+                >
                   {status}
                 </span>
               </p>

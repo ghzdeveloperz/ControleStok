@@ -1,3 +1,4 @@
+// src/pages/Relatorios.tsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   BarChart,
@@ -7,17 +8,25 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LabelList,
 } from "recharts";
-import { getMovementsByMonth, StockMovement } from "../db";
-import { initialProducts } from "../data/products";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-const daysInMonth = (month: number, year: number) =>
-  new Date(year, month, 0).getDate();
+import { db } from "../firebase/firebase";
+import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { fetchProducts, ProductQuantity } from "../firebase/firestore/products";
+
+interface StockMovement {
+  id: string;
+  productId: string | number;
+  productName: string;
+  type: "add" | "remove";
+  quantity: number;
+  price: number;
+  date: string; // YYYY-MM-DD
+}
 
 interface ProductDayMovement {
   id: string | number | undefined;
@@ -36,31 +45,59 @@ interface DailyProductMovements {
   products: ProductDayMovement[];
 }
 
+const daysInMonth = (month: number, year: number) =>
+  new Date(year, month, 0).getDate();
+
+const formatBRL = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
 const Relatorios: React.FC = () => {
   const now = new Date();
   const [selectedDate, setSelectedDate] = useState<Date>(
     new Date(now.getFullYear(), now.getMonth(), 1)
   );
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [products, setProducts] = useState<ProductQuantity[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const selectedMonth = selectedDate.getMonth() + 1;
-  const selectedYear = selectedDate.getFullYear();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const dayRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [highlightedDay, setHighlightedDay] = useState<number | null>(null);
 
+  const selectedMonth = selectedDate.getMonth() + 1;
+  const selectedYear = selectedDate.getFullYear();
+
+  // Buscar produtos
   useEffect(() => {
-    const loadMovements = async () => {
-      setLoading(true);
-      const data = await getMovementsByMonth(selectedMonth, selectedYear);
-      setMovements(data);
+    fetchProducts().then(setProducts);
+  }, []);
+
+  // Movimentos em tempo real
+  useEffect(() => {
+    setLoading(true);
+    const start = new Date(selectedYear, selectedMonth - 1, 1);
+    const end = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
+
+    const q = query(
+      collection(db, "movements"),
+      where("date", ">=", start.toISOString().split("T")[0]),
+      where("date", "<=", end.toISOString().split("T")[0]),
+      orderBy("date")
+    );
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const movs: StockMovement[] = snap.docs.map((doc) => {
+        const data = doc.data() as Omit<StockMovement, "id">;
+        return { id: doc.id, ...data };
+      });
+      setMovements(movs);
       setLoading(false);
-    };
-    loadMovements();
+    });
+
+    return () => unsubscribe();
   }, [selectedMonth, selectedYear]);
 
+  // Dados diários para gráfico mensal vertical
   const dailyData = useMemo(() => {
     const days = daysInMonth(selectedMonth, selectedYear);
     const base = Array.from({ length: days }, (_, i) => ({
@@ -80,34 +117,33 @@ const Relatorios: React.FC = () => {
     return base.map((d) => ({ ...d, dayLabel: String(d.day) }));
   }, [movements, selectedMonth, selectedYear]);
 
+  // Resumo mensal
   const monthlySummary = useMemo(() => {
     const entradasQty = movements
       .filter((m) => m.type === "add")
       .reduce((sum, m) => sum + m.quantity, 0);
     const entradasValue = movements
       .filter((m) => m.type === "add")
-      .reduce((sum, m) => sum + m.quantity * (Number(m.price) || 0), 0);
+      .reduce((sum, m) => sum + m.quantity * (m.price || 0), 0);
 
     const saidasQty = movements
       .filter((m) => m.type === "remove")
       .reduce((sum, m) => sum + m.quantity, 0);
     const saidasValue = movements
       .filter((m) => m.type === "remove")
-      .reduce((sum, m) => sum + m.quantity * (Number(m.price) || 0), 0);
-
-    const liquidoQty = entradasQty - saidasQty;
-    const liquidoValue = entradasValue - saidasValue;
+      .reduce((sum, m) => sum + m.quantity * (m.price || 0), 0);
 
     return {
       entradasQty,
       entradasValue,
       saidasQty,
       saidasValue,
-      liquidoQty,
-      liquidoValue,
+      liquidoQty: entradasQty - saidasQty,
+      liquidoValue: entradasValue - saidasValue,
     };
   }, [movements]);
 
+  // Produtos por dia — gráficos horizontais
   const productMovementsByDay: DailyProductMovements[] = useMemo(() => {
     const days = daysInMonth(selectedMonth, selectedYear);
     const daily: DailyProductMovements[] = [];
@@ -118,47 +154,48 @@ const Relatorios: React.FC = () => {
         "dd/MM/yyyy"
       );
 
-      const products: ProductDayMovement[] = initialProducts.map((p) => {
-        const addMovements = movements.filter(
-          (m) =>
-            m.productId === p.id &&
-            m.type === "add" &&
-            Number(m.date.split("-")[2]) === day
-        );
-        const removeMovements = movements.filter(
-          (m) =>
-            m.productId === p.id &&
-            m.type === "remove" &&
-            Number(m.date.split("-")[2]) === day
-        );
+      const productsDayMap: Record<string, ProductDayMovement> = {};
 
-        const addQty = addMovements.reduce((sum, m) => sum + m.quantity, 0);
-        const removeQty = removeMovements.reduce((sum, m) => sum + m.quantity, 0);
-        const addValue = addMovements.reduce((sum, m) => sum + m.quantity * (Number(m.price) || 0), 0);
-        const removeValue = removeMovements.reduce((sum, m) => sum + m.quantity * (Number(m.price) || 0), 0);
+      movements
+        .filter((m) => Number(m.date.split("-")[2]) === day)
+        .forEach((m) => {
+          if (!productsDayMap[m.productId]) {
+            const prod = products.find((p) => p.id === m.productId);
 
-        return {
-          id: p.id,
-          name: p.name,
-          image: p.image,
-          add: addQty,
-          remove: removeQty,
-          total: addQty + removeQty,
-          addValue,
-          removeValue,
-        };
-      });
+            productsDayMap[m.productId] = {
+              id: m.productId,
+              name: m.productName,
+              image: prod?.image ?? undefined,
+              add: 0,
+              remove: 0,
+              total: 0,
+              addValue: 0,
+              removeValue: 0,
+            };
+          }
+
+          const prodDay = productsDayMap[m.productId];
+          if (m.type === "add") {
+            prodDay.add += m.quantity;
+            prodDay.addValue += m.quantity * (m.price || 0);
+          } else {
+            prodDay.remove += m.quantity;
+            prodDay.removeValue += m.quantity * (m.price || 0);
+          }
+          prodDay.total = prodDay.add + prodDay.remove;
+        });
 
       daily.push({
         day,
         dateLabel,
-        products: products.filter((p) => p.total > 0).sort((a, b) => b.total - a.total),
+        products: Object.values(productsDayMap).sort((a, b) => b.total - a.total),
       });
     }
 
     return daily;
-  }, [movements, selectedMonth, selectedYear]);
+  }, [movements, selectedMonth, selectedYear, products]);
 
+  // Scroll ao clicar no gráfico mensal
   const scrollToDay = (day: number) => {
     const element = dayRefs.current[day];
     const container = containerRef.current;
@@ -186,10 +223,10 @@ const Relatorios: React.FC = () => {
   return (
     <div ref={containerRef} className="p-6 w-full overflow-auto h-full bg-gray-50">
       <h1 className="text-3xl font-bold mb-6">
-        Relatório de Movimentação —{" "}
-        <span className="text-lime-900">{reportTitle}</span>
+        Relatório de Movimentação — <span className="text-lime-900">{reportTitle}</span>
       </h1>
 
+      {/* MÊS */}
       <div className="flex items-center gap-2 mb-6">
         <label className="text-sm text-gray-600">Mês:</label>
         <DatePicker
@@ -206,37 +243,43 @@ const Relatorios: React.FC = () => {
         <div className="text-gray-500">Carregando...</div>
       ) : (
         <>
+          {/* RESUMO MENSAL */}
           <div className="mb-6 grid grid-cols-3 gap-4">
             <div className="bg-green-100 text-green-900 rounded shadow p-4 text-center">
               <div className="text-sm">Entradas</div>
               <div className="font-bold text-xl">
-                {monthlySummary.entradasQty} <br />
+                {monthlySummary.entradasQty}
+                <br />
                 <span className="text-base font-semibold">
-                  R$ {monthlySummary.entradasValue.toFixed(2)}
+                  {formatBRL(monthlySummary.entradasValue)}
                 </span>
               </div>
             </div>
+
             <div className="bg-red-100 text-red-900 rounded shadow p-4 text-center">
               <div className="text-sm">Saídas</div>
               <div className="font-bold text-xl">
-                {monthlySummary.saidasQty} <br />
+                {monthlySummary.saidasQty}
+                <br />
                 <span className="text-base font-semibold">
-                  R$ {monthlySummary.saidasValue.toFixed(2)}
+                  {formatBRL(monthlySummary.saidasValue)}
                 </span>
               </div>
             </div>
+
             <div className="bg-gray-100 text-gray-900 rounded shadow p-4 text-center">
               <div className="text-sm">Líquido</div>
               <div className="font-bold text-xl">
-                {monthlySummary.liquidoQty} <br />
+                {monthlySummary.liquidoQty}
+                <br />
                 <span className="text-base font-semibold">
-                  R$ {monthlySummary.liquidoValue.toFixed(2)}
+                  {formatBRL(monthlySummary.liquidoValue)}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Gráfico diário */}
+          {/* GRÁFICO MENSAL PRINCIPAL */}
           <div className="mb-8 bg-white rounded shadow p-4">
             <h2 className="font-semibold mb-4 text-gray-700">Movimentações Diárias</h2>
             <div style={{ width: "100%", height: "300px" }}>
@@ -261,7 +304,7 @@ const Relatorios: React.FC = () => {
             </div>
           </div>
 
-          {/* Produtos por dia */}
+          {/* LISTAGEM DE DIAS COM GRÁFICOS POR PRODUTO */}
           <div className="space-y-8">
             {productMovementsByDay.map(
               (day) =>
@@ -275,78 +318,91 @@ const Relatorios: React.FC = () => {
                       }`}
                   >
                     <h2 className="text-lg font-semibold mb-2">{day.dateLabel}</h2>
+
                     <div className="space-y-4">
-                      {day.products.map((p) => (
-                        <div
-                          key={p.id ?? p.name}
-                          className="bg-white rounded shadow p-4 flex flex-col gap-2"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-3">
-                              <img
-                                src={p.image ?? "/images/default.png"}
-                                alt={p.name}
-                                className="w-12 h-12 object-cover rounded"
-                              />
-                              <span className="font-semibold text-gray-800">{p.name}</span>
-                            </div>
-                            <div className="flex gap-4">
-                              <span className="text-green-600 font-semibold">
-                                R$ {p.addValue.toFixed(2)}
-                              </span>
-                              <span className="text-red-600 font-semibold">
-                                R$ {p.removeValue.toFixed(2)}
-                              </span>
-                              <span className="text-gray-800 font-semibold">
-                                R$ {(p.addValue - p.removeValue).toFixed(2)}
-                              </span>
-                            </div>
-                          </div>
-                          <div style={{ width: "100%", height: "70px" }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart
-                                layout="vertical"
-                                data={[
-                                  { type: "Entradas", value: p.add, fill: "#16A34A" },
-                                  { type: "Saídas", value: p.remove, fill: "#DC2626" },
-                                ]}
-                                margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
-                              >
-                                <CartesianGrid strokeDasharray="2 2" stroke="#e5e7eb" />
-                                <XAxis type="number" hide />
-                                <YAxis
-                                  type="category"
-                                  dataKey="type"
-                                  width={60}
-                                  axisLine={false}
-                                  tickLine={false}
-                                />
-                                <Tooltip
-                                  content={({ active, payload }) => {
-                                    if (active && payload && payload.length) {
-                                      const data = payload[0].payload;
-                                      return (
-                                        <div className="bg-white border rounded p-2 text-sm shadow">
-                                          {data.type}: {data.value}
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  }}
-                                />
-                                <Bar dataKey="value" isAnimationActive>
-                                  <LabelList
-                                    dataKey="value"
-                                    position="insideRight"
-                                    fill="#fff"
-                                    fontWeight="bold"
+                      {day.products.map((p) => {
+                        const liquido = p.addValue - p.removeValue;
+
+                        return (
+                          <div
+                            key={p.id ?? p.name}
+                            className="bg-white rounded shadow p-4 space-y-3"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                {p.image && (
+                                  <img
+                                    src={p.image}
+                                    alt={p.name}
+                                    className="w-8 h-8 rounded-full object-cover"
                                   />
-                                </Bar>
-                              </BarChart>
-                            </ResponsiveContainer>
+                                )}
+                                <span className="font-semibold text-gray-800">
+                                  {p.name}
+                                </span>
+                              </div>
+
+                              {/* 3 valores (R$) NO CANTO SUPERIOR DIREITO */}
+                              <div className="flex gap-4 text-sm font-semibold">
+                                <span className="text-green-600">
+                                  {formatBRL(p.addValue)}
+                                </span>
+                                <span className="text-red-600">
+                                  {formatBRL(p.removeValue)}
+                                </span>
+                                <span className="text-gray-800">
+                                  {formatBRL(liquido)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* GRÁFICO — duas barras (Entrada / Saída) */}
+                            <div style={{ width: "100%", height: 60 }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                  layout="vertical"
+                                  data={[
+                                    {
+                                      name: p.name,
+                                      Entradas: p.add,
+                                      Saidas: p.remove,
+                                    },
+                                  ]}
+                                >
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                  <XAxis type="number" hide />
+                                  <YAxis type="category" dataKey="name" hide />
+
+                                  {/* Tooltip mostrando QUANTIDADE */}
+                                  <Tooltip
+                                    formatter={(value, name) => [
+                                      `${value} unidades`,          // Exibe quantidade
+                                      name === "Entradas" ? "Entradas" : "Saídas",
+                                    ]}
+                                  />
+
+                                  {/* Entrada (quantidade) */}
+                                  <Bar
+                                    dataKey="Entradas"
+                                    fill="#16A34A"
+                                    barSize={14}
+                                    radius={[8, 8, 8, 8]}
+                                  />
+
+                                  {/* Saída (quantidade) */}
+                                  <Bar
+                                    dataKey="Saidas"
+                                    fill="#DC2626"
+                                    barSize={14}
+                                    radius={[8, 8, 8, 8]}
+                                  />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )
