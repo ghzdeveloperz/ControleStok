@@ -166,7 +166,7 @@ export default function Estoque() {
   // ⭐⭐ UI NORMAL APÓS CARREGAR ⭐⭐
   // -------------------------------------------------------------------
   return (
-    <div className="p-4 sm:p-6">
+    <div className="p-4 sm:p-6 min-h-screen overflow-y-auto">
       {alert && <AlertBanner {...alert} onClose={() => setAlert(null)} />}
 
       <div className="flex justify-between items-center mb-4 flex-wrap">

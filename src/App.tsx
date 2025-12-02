@@ -52,7 +52,7 @@ export const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen">
       <Sidebar
         logoSrc={logoSrc}
         profileSrc={profileSrc}

@@ -31,8 +31,6 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
   const [price, setPrice] = useState("");
   const [keepSamePrice, setKeepSamePrice] = useState(true);
   const [loading, setLoading] = useState(false);
-
-  // Popup de confirmação
   const [showPriceConfirm, setShowPriceConfirm] = useState(false);
 
   const filteredProducts = products.filter((p) =>
@@ -41,7 +39,6 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
 
-  // Formatar moeda
   const formatCurrency = (value: string) => {
     const clean = value.replace(/\D/g, "");
     const number = Number(clean) / 100;
@@ -55,24 +52,19 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
     return Number(formatted.replace(/\D/g, "")) / 100;
   };
 
-  // === Quando desmarcar o checkbox, exibir popup ===
   const handleTogglePrice = () => {
     if (keepSamePrice) {
-      // vai desmarcar: confirmar antes
       setShowPriceConfirm(true);
     } else {
-      // vai marcar novamente
       setKeepSamePrice(true);
       setPrice("");
     }
   };
 
-  // Confirma alteração de preço
   const confirmPriceChange = () => {
     setKeepSamePrice(false);
     setShowPriceConfirm(false);
 
-    // Preencher automaticamente com o preço atual
     if (selectedProduct?.unitPrice) {
       setPrice(
         selectedProduct.unitPrice.toLocaleString("pt-BR", {
@@ -83,7 +75,6 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
     }
   };
 
-  // Cancela alteração de preço
   const cancelPriceChange = () => {
     setKeepSamePrice(true);
     setShowPriceConfirm(false);
@@ -101,20 +92,21 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
       ? prod.unitPrice ?? prod.price
       : parseCurrency(price);
 
-    if (!keepSamePrice && price === "") return;
+    if (!keepSamePrice && price.trim() === "") return;
 
-    setLoading(true);
     const dateStr = entryDate.toISOString().split("T")[0];
 
-    // Custo médio
     const oldQty = prod.quantity;
     const oldCost = prod.price;
     const newAvgCost = (oldQty * oldCost + qty * loteCost) / (oldQty + qty);
 
     prod.unitPrice = loteCost;
 
+    // 👉 FECHA O MODAL IMEDIATAMENTE APÓS onAdd
     onAdd(selectedProductId, qty, dateStr, newAvgCost, loteCost);
+    onClose();
 
+    // 👉 Depois disso roda o backend sem travar o usuário
     try {
       await saveMovement({
         productId: selectedProductId,
@@ -126,7 +118,6 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
         date: dateStr,
       });
 
-      // Atualizar banco
       await saveProducts(
         products.map((p) => ({
           id: p.id,
@@ -137,9 +128,6 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
       );
     } catch (err) {
       console.error("Erro ao salvar movimentação:", err);
-    } finally {
-      setLoading(false);
-      onClose();
     }
   };
 
@@ -169,7 +157,6 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
             ))}
           </select>
 
-          {/* Preço Atual exibido */}
           {selectedProduct && (
             <p className="text-sm text-gray-600">
               Preço atual:{" "}
@@ -225,9 +212,11 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
           <button
             onClick={onClose}
             className="cursor-pointer px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            disabled={loading}
           >
             Cancelar
           </button>
+
           <button
             onClick={handleAdd}
             className="cursor-pointer px-4 py-2 bg-lime-900 text-white rounded hover:bg-green-700"
@@ -238,7 +227,6 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
         </div>
       </div>
 
-      {/* POPUP DE CONFIRMAÇÃO */}
       {showPriceConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white p-5 rounded-lg shadow-xl w-80 flex flex-col gap-4">
