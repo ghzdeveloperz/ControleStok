@@ -1,14 +1,12 @@
-// src/components/modals/ModalRemoveProduct.tsx
 import React, { useState } from "react";
 import { Product } from "../ProductCard";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { saveMovement } from "../../db";
 
 interface ModalRemoveProductProps {
   products: Product[];
   onClose: () => void;
-  onRemove: (productId: Product["id"], quantity: number, exitDate: string) => void;
+  onRemove: (productId: string, quantity: number) => void;
 }
 
 export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
@@ -17,8 +15,8 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   onRemove,
 }) => {
   const [search, setSearch] = useState("");
-  const [selectedProductId, setSelectedProductId] = useState<Product["id"] | null>(
-    products.length > 0 ? products[0].id : null
+  const [selectedProductId, setSelectedProductId] = useState<string>(
+    products.length > 0 ? String(products[0].id) : ""
   );
   const [quantity, setQuantity] = useState<number | "">("");
   const [exitDate, setExitDate] = useState<Date | null>(null);
@@ -31,7 +29,7 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   const handleRemove = async () => {
     if (!selectedProductId || quantity === "" || !exitDate) return;
 
-    const product = products.find((p) => p.id === selectedProductId);
+    const product = products.find((p) => String(p.id) === selectedProductId);
     if (!product) return;
 
     if (Number(quantity) > product.quantity) {
@@ -40,32 +38,14 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
     }
 
     setLoading(true);
-    const dateStr = exitDate.toISOString().split("T")[0];
+    onRemove(selectedProductId, Number(quantity));
 
-    // chama função do pai para atualizar quantidade
-    onRemove(selectedProductId, Number(quantity), dateStr);
-
-    // salva movimentação no DB com custo
-    try {
-      await saveMovement({
-        productId: selectedProductId,
-        productName: product.name,
-        quantity: Number(quantity),
-        type: "remove",
-        date: dateStr,
-        price: product.price ?? 0,  // valor do produto
-        cost: product.price ?? 0,   // custo usado para cálculos
-      });
-    } catch (err) {
-      console.error("Erro ao salvar movimentação:", err);
-    } finally {
-      setLoading(false);
-      setQuantity("");
-      setExitDate(null);
-      setSelectedProductId(filteredProducts[0]?.id ?? null);
-      setSearch("");
-      onClose();
-    }
+    setLoading(false);
+    setQuantity("");
+    setExitDate(null);
+    setSelectedProductId(filteredProducts[0]?.id ?? "");
+    setSearch("");
+    onClose();
   };
 
   return (
@@ -83,12 +63,12 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
           />
 
           <select
-            value={selectedProductId ?? ""}
-            onChange={(e) => setSelectedProductId(Number(e.target.value))}
+            value={selectedProductId}
+            onChange={(e) => setSelectedProductId(e.target.value)}
             className="cursor-pointer px-3 py-2 border rounded w-full"
           >
             {filteredProducts.map((p) => (
-              <option key={p.id} value={p.id}>
+              <option key={p.id} value={String(p.id)}>
                 {p.name} (Em estoque: {p.quantity})
               </option>
             ))}
@@ -107,7 +87,7 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
 
           <DatePicker
             selected={exitDate}
-            onChange={(date: Date | null) => setExitDate(date)}
+            onChange={(date) => setExitDate(date)}
             className="cursor-pointer px-3 py-2 border rounded w-full"
             placeholderText="Escolha a data de saída"
             dateFormat="yyyy-MM-dd"

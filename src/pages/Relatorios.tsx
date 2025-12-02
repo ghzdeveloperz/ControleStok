@@ -1,4 +1,3 @@
-// src/pages/Relatorios.tsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   BarChart,
@@ -207,7 +206,6 @@ const Relatorios: React.FC = () => {
         <div className="text-gray-500">Carregando...</div>
       ) : (
         <>
-
           <div className="mb-6 grid grid-cols-3 gap-4">
             <div className="bg-green-100 text-green-900 rounded shadow p-4 text-center">
               <div className="text-sm">Entradas</div>

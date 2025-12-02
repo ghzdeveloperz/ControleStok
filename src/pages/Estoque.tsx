@@ -1,165 +1,106 @@
-// src/pages/Estoque.tsx
-import React, { useEffect, useState } from "react";
+"use client";
+
+import React, { useState } from "react";
 import { ProductCard, Product } from "../components/ProductCard";
 import { ModalAddProduct } from "../components/modals/ModalAddProduct";
 import { ModalRemoveProduct } from "../components/modals/ModalRemoveProduct";
 import { ProductDetailsModal } from "../components/modals/ProductDetailsModal";
 import { AlertBanner } from "../components/AlertBanner";
-import {
-  initDB,
-  saveProducts,
-  getProducts,
-  clearDB,
-  ProductQuantity,
-} from "../db";
-
-const initialProducts: Product[] = [
-  {
-    id: 1,
-    name: "Niguiri",
-    price: 49.8, // custo médio inicial
-    unitPrice: 49.8, // preço unitário inicial
-    quantity: 20,
-    minStock: 10,
-    category: "Sushi",
-    image: "/images/sushi-especial.jpg",
-  },
-  {
-    id: 2,
-    name: "Uramaki Philadelfia",
-    price: 49.8,
-    unitPrice: 49.8,
-    quantity: 20,
-    minStock: 10,
-    category: "Sushi",
-    image: "/images/uramaki_philadelfia.png",
-  },
-];
+import { saveMovement, removeProduct, notifyProducts } from "../firebase/firestore/products";
+import { useProducts } from "../hooks/useProducts";
 
 export const Estoque: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const { products: rawProducts } = useProducts();
+
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("Todos");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [alert, setAlert] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
+  const [alert, setAlert] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // =====================================================
-  // 🔥 Agora o carregamento respeita unitPrice SEMPRE!
-  // =====================================================
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        await initDB();
-        const stored = await getProducts(); // ProductQuantity[]
-
-        if (Array.isArray(stored) && stored.length > 0) {
-          const merged = initialProducts.map((p) => {
-            const found = stored.find((s) => String(s.id) === String(p.id));
-
-            return {
-              ...p,
-              quantity: found?.quantity ?? p.quantity,
-              price: found?.cost ?? p.price, // custo médio salvo
-              unitPrice: found?.unitPrice ?? p.unitPrice, // unitPrice REAL salvo
-            } as Product;
-          });
-
-          setProducts(merged);
-        } else {
-          // primeira execução → salvar valores iniciais
-          await saveProducts(
-            initialProducts.map((p) => ({
-              id: p.id,
-              quantity: p.quantity,
-              cost: p.price,
-              unitPrice: p.unitPrice,
-            }))
-          );
-          setProducts(initialProducts);
-        }
-      } catch (err) {
-        console.error("Erro ao carregar dados:", err);
-      }
-    };
-
-    loadData();
-  }, []);
+  // Adaptando os produtos do Firebase para o ProductCard
+  const products: Product[] = rawProducts.map((p) => ({
+    id: p.id,
+    name: p.name ?? "Sem nome",
+    quantity: p.quantity ?? 0,
+    price: p.cost ?? 0,
+    unitPrice: p.unitPrice ?? p.cost ?? 0,
+    category: p.category ?? "Sem categoria",
+    minStock: p.minStock ?? 0,
+    image: p.image ?? "/images/placeholder.png",
+  }));
 
   const filteredProducts = products.filter((product) => {
     const matchesCategory = filter === "Todos" || product.category === filter;
-    const matchesSearch = product.name
-      .toLowerCase()
-      .includes(search.toLowerCase());
+    const matchesSearch = (product.name ?? "").toLowerCase().includes(search.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
-  const updateProducts = async (
-    newProducts: Product[],
-    message: string,
-    type: "success" | "error"
-  ) => {
-    setProducts(newProducts);
+  const showTimedAlert = (message: string, type: "success" | "error") => {
     setAlert({ message, type });
-
-    await saveProducts(
-      newProducts.map((p) => ({
-        id: p.id,
-        quantity: p.quantity,
-        cost: p.price, // custo médio
-        unitPrice: p.unitPrice, // unitário REAL e independente
-      }))
-    );
-
     setTimeout(() => setAlert(null), 2000);
   };
 
-  // =====================================================
-  // 🔥 Agora unitPrice NÃO é mais modificado automaticamente!
-  // =====================================================
-  const handleAddProduct = (
-    productId: Product["id"],
+  // --------------------------------------------
+  // ADICIONAR QUANTIDADE
+  // --------------------------------------------
+  const handleAddProduct = async (
+    productId: string,
     qty: number,
     date: string,
     newAvgCost: number,
     newUnitPrice?: number
   ) => {
-    const newProducts = products.map((p) =>
-      p.id === productId
-        ? {
-            ...p,
-            quantity: p.quantity + qty,
-            price: newAvgCost, // custo médio atualizado
-            unitPrice: newUnitPrice ?? p.unitPrice, // unitPrice permanece o input do usuário
-          }
-        : p
-    );
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
 
-    updateProducts(newProducts, "Produto adicionado!", "success");
+    await saveMovement({
+      productId,
+      productName: product.name ?? "Sem nome",
+      quantity: qty,
+      price: newUnitPrice ?? product.unitPrice ?? 0,
+      cost: newAvgCost,
+      type: "add",
+      date,
+    });
+
+    showTimedAlert("Produto adicionado!", "success");
   };
 
-  const handleRemoveProduct = (productId: Product["id"], qty: number) => {
-    const newProducts = products.map((p) =>
-      p.id === productId
-        ? {
-            ...p,
-            quantity: Math.max(0, p.quantity - qty),
-          }
-        : p
-    );
+  // --------------------------------------------
+  // REMOVER QUANTIDADE OU EXCLUIR PRODUTO
+  // --------------------------------------------
+  const handleRemoveProduct = async (productId: string, qty?: number, removeEntire?: boolean) => {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
 
-    updateProducts(newProducts, "Produto removido!", "error");
-  };
+    try {
+      if (removeEntire) {
+        // Deleta o produto inteiro do estoque
+        await removeProduct(productId);
 
-  const handleClearStorage = async () => {
-    await clearDB();
-    setProducts(initialProducts);
-    setAlert({ message: "Armazenamento limpo!", type: "success" });
-    setTimeout(() => setAlert(null), 2000);
+        // Atualiza lista de produtos imediatamente
+        await notifyProducts();
+
+        showTimedAlert("Produto excluído do estoque!", "error");
+      } else if (qty && qty > 0) {
+        // Apenas remove quantidade
+        await saveMovement({
+          productId,
+          productName: product.name ?? "Sem nome",
+          quantity: qty,
+          price: product.unitPrice ?? 0,
+          cost: product.price ?? 0,
+          type: "remove",
+          date: new Date().toISOString().split("T")[0],
+        });
+        showTimedAlert("Quantidade removida do produto!", "error");
+      }
+    } catch (err) {
+      console.error("Erro ao remover produto:", err);
+      showTimedAlert("Erro ao remover produto!", "error");
+    }
   };
 
   return (
@@ -169,26 +110,19 @@ export const Estoque: React.FC = () => {
       <div className="flex justify-between items-center mb-4 flex-wrap">
         <h1 className="text-2xl font-bold text-gray-800">Estoque</h1>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setShowAddModal(true)}
-            className="cursor-pointer px-4 py-2 bg-lime-900 text-white rounded"
+            className="px-4 py-2 bg-lime-900 text-white rounded cursor-pointer"
           >
             Adicionar
           </button>
 
           <button
             onClick={() => setShowRemoveModal(true)}
-            className="cursor-pointer px-4 py-2 bg-red-800 text-white rounded"
+            className="px-4 py-2 bg-red-800 text-white rounded cursor-pointer"
           >
             Remover
-          </button>
-
-          <button
-            onClick={handleClearStorage}
-            className="cursor-pointer px-4 py-2 bg-gray-700 text-white rounded"
-          >
-            Limpar Armazenamento
           </button>
         </div>
       </div>
@@ -202,25 +136,18 @@ export const Estoque: React.FC = () => {
       />
 
       <div className="flex gap-2 mb-6 flex-wrap">
-        {["Todos", "Brasileiros", "Asiáticos", "Sushi", "Limpeza", "Frios"].map(
-          (cat) => (
-            <button
-              key={cat}
-              onClick={() => setFilter(cat)}
-              className={`px-4 py-1 rounded ${
-                filter === cat ? "bg-black text-white" : "bg-gray-200"
-              }`}
-            >
-              {cat}
-            </button>
-          )
-        )}
+        {["Todos", "Brasileiros", "Asiáticos", "Sushi", "Limpeza", "Frios"].map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setFilter(cat)}
+            className={`px-4 py-1 rounded ${filter === cat ? "bg-black text-white" : "bg-gray-200"}`}
+          >
+            {cat}
+          </button>
+        ))}
       </div>
 
-      <ProductCard
-        products={filteredProducts}
-        onSelect={(p) => setSelectedProduct(p)}
-      />
+      <ProductCard products={filteredProducts} onSelect={(p) => setSelectedProduct(p)} />
 
       {showAddModal && (
         <ModalAddProduct
@@ -233,7 +160,9 @@ export const Estoque: React.FC = () => {
       {showRemoveModal && (
         <ModalRemoveProduct
           products={products}
-          onRemove={handleRemoveProduct}
+          onRemove={async (productId: string, qty: number) => {
+            await handleRemoveProduct(productId, qty);
+          }}
           onClose={() => setShowRemoveModal(false)}
         />
       )}
@@ -242,6 +171,10 @@ export const Estoque: React.FC = () => {
         <ProductDetailsModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
+          onRemove={async (productId: string, removeEntire?: boolean) => {
+            await handleRemoveProduct(productId, undefined, removeEntire);
+            setSelectedProduct(null);
+          }}
         />
       )}
     </div>

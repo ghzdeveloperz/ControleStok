@@ -1,74 +1,157 @@
 import React, { useState } from "react";
-import { Sidebar } from "../components/Sidebar";
-import { ProductCard } from "../components/ProductCard";
+import { FaBoxes, FaChartBar, FaCog, FaBars, FaPlus } from "react-icons/fa";
 
-const sampleProducts = [
-  { id: 1, name: "Produto A", price: 49.9, quantity: 10, image: "https://via.placeholder.com/300x200" },
-  { id: 2, name: "Produto B", price: 79.9, quantity: 0, image: "https://via.placeholder.com/300x200" },
-  { id: 3, name: "Produto C", price: 19.9, quantity: 5, image: "https://via.placeholder.com/300x200" },
-  { id: 4, name: "Produto D", price: 29.9, quantity: 7, image: "https://via.placeholder.com/300x200" },
-];
+interface SidebarProps {
+  active?: "Estoque" | "NovoProduto" | "Relatórios" | "Configurações";
+  onNavigate?: (
+    page: "Estoque" | "NovoProduto" | "Relatórios" | "Configurações"
+  ) => void;
+  logoSrc?: string;
+  profileSrc?: string;
+  userId?: string;
+}
 
-export function Dashboard() {
-  const [activePage, setActivePage] = useState<"Estoque" | "Relatórios" | "Configurações">("Estoque");
-  const [logoSrc, setLogoSrc] = useState<string | undefined>(undefined); // logo dinâmica
+export function Sidebar({
+  active,
+  onNavigate,
+  logoSrc,
+  profileSrc,
+  userId,
+}: SidebarProps) {
+  const [collapsed, setCollapsed] = useState(true);
+  const sidebarWidth = collapsed ? 70 : 240; // leve redução
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const img = new Image();
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        img.src = e.target.result as string;
-        img.onload = () => {
-          // validação de tamanho: 612 x 130
-          if (img.width === 612 && img.height === 130) {
-            setLogoSrc(img.src);
-          } else {
-            alert("A imagem precisa ter exatamente 612 x 130 px");
-          }
-        };
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const renderPage = () => {
-    switch (activePage) {
-      case "Estoque":
-        return (
-          <main className="bg-gray-50 p-6 overflow-auto h-full">
-            <h1 className="text-2xl font-bold mb-6 text-gray-800">Estoque</h1>
-            <ProductCard products={sampleProducts} />
-          </main>
-        );
-      case "Relatórios":
-        return (
-          <main className="bg-gray-50 p-6 overflow-auto h-full">
-            <h1 className="text-2xl font-bold mb-6 text-gray-800">Relatórios</h1>
-          </main>
-        );
-      case "Configurações":
-        return (
-          <main className="bg-gray-50 p-6 overflow-auto h-full">
-            <h1 className="text-2xl font-bold mb-6 text-gray-800">Configurações</h1>
-            <div className="flex flex-col gap-4">
-              <label className="font-semibold">Upload de Logo (612 x 130px)</label>
-              <input type="file" accept="image/*" onChange={handleLogoUpload} />
-            </div>
-          </main>
-        );
-      default:
-        return null;
-    }
-  };
+  const toggleCollapse = () => setCollapsed(!collapsed);
 
   return (
-    <div className="flex h-screen">
-      <Sidebar active={activePage} onNavigate={setActivePage} logoSrc={logoSrc} />
-      <div className="flex-1">{renderPage()}</div>
+    <div
+      className="flex flex-col h-screen relative overflow-visible"
+      style={{
+        width: sidebarWidth,
+        transition: "width 0.25s ease",
+        backgroundColor: "#ececec",
+      }}
+    >
+      {/* Cabeçalho */}
+      <div className="flex items-center justify-between p-3 border-b border-gray-300">
+        {!collapsed && (
+          <img
+            src={logoSrc ?? "/images/jinjin-banner.png"}
+            alt="Logo"
+            className="h-9 w-auto"
+          />
+        )}
+
+        <button
+          onClick={toggleCollapse}
+          className="p-2 rounded hover:bg-gray-200 transition-colors cursor-pointer"
+        >
+          <FaBars size={18} color="#1f1f1f" />
+        </button>
+      </div>
+
+      {/* Menu */}
+      <nav className="mt-3 flex flex-col flex-1 gap-1">
+        <SidebarItem
+          collapsed={collapsed}
+          icon={FaBoxes}
+          label="Estoque"
+          active={active === "Estoque"}
+          onClick={() => onNavigate?.("Estoque")}
+        />
+
+        <SidebarItem
+          collapsed={collapsed}
+          icon={FaPlus}
+          label="Novo Produto"
+          active={active === "NovoProduto"}
+          onClick={() => onNavigate?.("NovoProduto")}
+          indent
+        />
+
+        <SidebarItem
+          collapsed={collapsed}
+          icon={FaChartBar}
+          label="Relatórios"
+          active={active === "Relatórios"}
+          onClick={() => onNavigate?.("Relatórios")}
+        />
+
+        <SidebarItem
+          collapsed={collapsed}
+          icon={FaCog}
+          label="Configurações"
+          active={active === "Configurações"}
+          onClick={() => onNavigate?.("Configurações")}
+        />
+      </nav>
+
+      {/* Rodapé */}
+      <div className="absolute bottom-4 left-0 w-full flex justify-center">
+        <div
+          className={`relative flex items-center ${
+            collapsed ? "justify-center" : "justify-start"
+          } gap-2 bg-black rounded-full px-3 py-2`}
+          style={{ width: collapsed ? 55 : sidebarWidth - 20 }}
+        >
+          <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white">
+            <img
+              src={profileSrc ?? "/images/default-profile.png"}
+              className="w-9 h-9 rounded-full object-cover"
+              alt="Foto"
+            />
+          </div>
+
+          {!collapsed && (
+            <span className="text-white font-semibold text-sm truncate">
+              {userId ?? "xxxxx"}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface SidebarItemProps {
+  collapsed: boolean;
+  icon: any;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+  indent?: boolean;
+}
+
+function SidebarItem({
+  collapsed,
+  icon: Icon,
+  label,
+  active,
+  onClick,
+  indent = false,
+}: SidebarItemProps) {
+  const basePadding = collapsed ? "py-3" : "py-2";
+  const marginLeft = collapsed ? 0 : indent ? 18 : 0; // indent mais discreto
+
+  return (
+    <div
+      onClick={onClick}
+      className={`
+        flex items-center 
+        ${collapsed ? "justify-center" : "justify-start"} 
+        gap-3 cursor-pointer select-none 
+        rounded-md transition-colors duration-200
+        ${basePadding}
+        ${active ? "bg-black text-white" : "hover:bg-gray-200 text-gray-700"}
+        mx-1
+      `}
+      style={{ marginLeft }}
+    >
+      <Icon size={20} color={active ? "#ffffff" : "#1f1f1f"} />
+
+      {!collapsed && (
+        <span className="whitespace-nowrap text-sm">{label}</span>
+      )}
     </div>
   );
 }

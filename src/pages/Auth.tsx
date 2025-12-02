@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import styled, { keyframes } from "styled-components";
 import { FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa";
-import { auth, googleProvider } from "../firebase";
+import { auth, googleProvider } from "../firebase/firebase";
 import {
   signInWithPopup,
   signInWithEmailAndPassword,

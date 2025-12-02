@@ -1,5 +1,3 @@
-// src/db.ts
-
 // ----------------------------------------------
 // TIPAGENS
 // ----------------------------------------------
@@ -9,6 +7,12 @@ export interface ProductQuantity {
   quantity: number;
   cost?: number;      // custo médio
   unitPrice?: number; // preço unitário definido no modal
+
+  // campos extras para persistência completa
+  name?: string;
+  category?: string;
+  image?: string;
+  minStock?: number;
 }
 
 export interface StockMovement {
@@ -67,27 +71,51 @@ export const initDB = (): Promise<void> => {
 };
 
 // ----------------------------------------------
-// RESET TOTAL DO BANCO
+// CRUD – QUANTIDADES
 // ----------------------------------------------
 
-export const resetDB = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    if (db) {
-      db.close();
-      db = null;
+export const saveProducts = (products: ProductQuantity[]): Promise<void> => {
+  return new Promise(async (resolve, reject) => {
+    await initDB();
+
+    const tx = db!.transaction(STORE_QUANTITIES, "readwrite");
+    const store = tx.objectStore(STORE_QUANTITIES);
+
+    for (const product of products) {
+      store.put({
+        id: product.id,
+        quantity: product.quantity,
+        cost: product.cost ?? 0,
+        unitPrice: product.unitPrice ?? 0,
+        name: product.name ?? "",
+        category: product.category ?? "Sem categoria",
+        image: product.image ?? null,
+        minStock: product.minStock ?? 0,
+      });
     }
 
-    const req = indexedDB.deleteDatabase(DB_NAME);
-
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject("Erro ao deletar banco");
-    req.onblocked = () => console.warn("Exclusão bloqueada");
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
   });
 };
 
-// ----------------------------------------------
-// LIMPAR APENAS TABELAS
-// ----------------------------------------------
+export const getProducts = (): Promise<ProductQuantity[]> => {
+  return new Promise(async (resolve, reject) => {
+    await initDB();
+
+    const tx = db!.transaction(STORE_QUANTITIES, "readonly");
+    const store = tx.objectStore(STORE_QUANTITIES);
+
+    const request = store.getAll();
+
+    request.onsuccess = () => {
+      resolve(request.result as ProductQuantity[]);
+    };
+
+    request.onerror = () => reject(request.error);
+  });
+};
+
 
 export const clearDB = async (): Promise<void> => {
   if (!db) await initDB();
@@ -104,10 +132,10 @@ export const clearDB = async (): Promise<void> => {
 };
 
 // ----------------------------------------------
-// CRUD – QUANTIDADES
+// REMOVER PRODUTO
 // ----------------------------------------------
 
-export const saveProducts = (products: ProductQuantity[]): Promise<void> => {
+export const removeProduct = (productId: number | string): Promise<void> => {
   return new Promise(async (resolve, reject) => {
     if (!db) await initDB();
     if (!db) return reject("Banco não inicializado");
@@ -115,31 +143,10 @@ export const saveProducts = (products: ProductQuantity[]): Promise<void> => {
     const tx = db.transaction(STORE_QUANTITIES, "readwrite");
     const store = tx.objectStore(STORE_QUANTITIES);
 
-    products.forEach((p) => store.put(p));
-
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject("Erro ao salvar produtos");
+    const delReq = store.delete(productId);
+    delReq.onsuccess = () => resolve();
+    delReq.onerror = () => reject("Erro ao remover produto");
   });
-};
-
-export const getProductsQuantities = (): Promise<ProductQuantity[]> => {
-  return new Promise(async (resolve, reject) => {
-    if (!db) await initDB();
-    if (!db) return reject("Banco não inicializado");
-
-    const tx = db.transaction(STORE_QUANTITIES, "readonly");
-    const store = tx.objectStore(STORE_QUANTITIES);
-
-    const req = store.getAll();
-
-    req.onsuccess = () => resolve(req.result as ProductQuantity[]);
-    req.onerror = () => reject("Erro ao recuperar produtos");
-  });
-};
-
-// Função de compatibilidade
-export const getProducts = async (): Promise<ProductQuantity[]> => {
-  return await getProductsQuantities();
 };
 
 // ----------------------------------------------
@@ -161,19 +168,17 @@ export const saveMovement = (
       const movementsStore = tx.objectStore(STORE_MOVEMENTS);
       const quantitiesStore = tx.objectStore(STORE_QUANTITIES);
 
-      // Salva a movimentação
       const toSave: StockMovement = { ...movement, id: makeId() };
       movementsStore.put(toSave);
 
-      // Atualiza produto no estoque
       const getReq = quantitiesStore.get(movement.productId);
       getReq.onsuccess = () => {
         const prod = getReq.result as ProductQuantity;
         if (prod) {
           if (movement.type === "add") {
             prod.quantity += movement.quantity;
-            prod.cost = movement.cost;       // usa custo médio calculado
-            prod.unitPrice = movement.price; // preço unitário definido no modal
+            prod.cost = movement.cost;
+            prod.unitPrice = movement.price;
           } else if (movement.type === "remove") {
             prod.quantity -= movement.quantity;
           }
@@ -204,6 +209,10 @@ export const getAllMovements = (): Promise<StockMovement[]> => {
   });
 };
 
+// ----------------------------------------------
+// BUSCAR MOVIMENTOS POR MÊS
+// ----------------------------------------------
+
 export const getMovementsByMonth = (
   month: number,
   year: number
@@ -229,40 +238,3 @@ export const getMovementsByMonth = (
     req.onerror = () => reject("Erro ao recuperar movimentos por mês");
   });
 };
-
-export const getAvailableMonths = (): Promise<{ month: number; year: number }[]> =>
-  new Promise(async (resolve, reject) => {
-    if (!db) await initDB();
-    if (!db) return reject("DB não inicializado");
-
-    const tx = db.transaction(STORE_MOVEMENTS, "readonly");
-    const store = tx.objectStore(STORE_MOVEMENTS);
-
-    const req = store.getAll();
-
-    req.onsuccess = () => {
-      const all = req.result as StockMovement[];
-      const map = new Map<string, { month: number; year: number }>();
-
-      all.forEach((m) => {
-        const parts = (m.date || "").split("-");
-        if (parts.length < 2) return;
-
-        const year = Number(parts[0]);
-        const month = Number(parts[1]);
-        if (!year || !month) return;
-
-        const key = `${year}-${month}`;
-        if (!map.has(key)) map.set(key, { month, year });
-      });
-
-      const arr = Array.from(map.values()).sort((a, b) => {
-        if (a.year !== b.year) return b.year - a.year;
-        return b.month - a.month;
-      });
-
-      resolve(arr);
-    };
-
-    req.onerror = () => reject("Erro ao recuperar meses disponíveis");
-  });

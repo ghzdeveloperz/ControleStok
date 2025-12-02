@@ -1,28 +1,48 @@
 {
   "compilerOptions": {
-    "target": "ESNext",                   // Código moderno
-    "useDefineForClassFields": true,      // Compatível com React
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "allowJs": false,                      // Não permitir JS solto, só TS
-    "skipLibCheck": true,                  // Ignora checagem de tipos de libs externas
+    "target": "ESNext", // Código moderno
+    "useDefineForClassFields": true, // Compatível com React
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ],
+    "allowJs": false, // Não permitir JS solto, só TS
+    "skipLibCheck": true, // Ignora checagem de tipos de libs externas
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "strict": true,                        // Habilita todas as verificações estritas
+    "strict": true, // Habilita todas as verificações estritas
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Node",
-    "resolveJsonModule": true,             // Permite importar arquivos JSON
+    "resolveJsonModule": true, // Permite importar arquivos JSON
     "isolatedModules": true,
-    "noEmit": true,                        // Não gera JS, Vite cuida disso
-    "jsx": "react-jsx",                    // Para React 17+
-    "baseUrl": "./src",                    // Facilita imports absolutos
+    "noEmit": true, // Não gera JS, Vite cuida disso
+    "jsx": "react-jsx", // Para React 17+
+    "baseUrl": "./src", // Facilita imports absolutos
     "paths": {
-      "@components/*": ["components/*"],
-      "@pages/*": ["pages/*"],
-      "@store/*": ["store/*"],
-      "@types/*": ["types/*"]
+      "@/*": [
+        "*"
+      ],
+      "@components/*": [
+        "components/*"
+      ],
+      "@pages/*": [
+        "pages/*"
+      ],
+      "@store/*": [
+        "store/*"
+      ],
+      "@types/*": [
+        "types/*"
+      ]
     }
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }
