@@ -134,17 +134,15 @@ export const removeProduct = async (id: string) => {
 };
 
 // ------------------------------------------------------
-// ★★★ SALVAR MOVIMENTO (CORRIGIDO — SEM BLOQUEIO DE DUPLICADOS) ★★★
+// ★★★ SALVAR MOVIMENTO (VERSÃO FINAL — SEM BLOQUEIO) ★★★
 // ------------------------------------------------------
 
 export const saveMovement = async (
   data: Omit<StockMovement, "id">
 ): Promise<StockMovement> => {
 
-  // 🔥 Converte corretamente a data para um Date real
   const convertedDate = new Date(data.date + "T00:00:00");
 
-  // 🔥 Salva o movimento SEM BLOQUEAR DUPLICADOS
   const movementDocRef = await addDoc(movementsRef, {
     ...data,
     timestamp: serverTimestamp(),
@@ -152,7 +150,6 @@ export const saveMovement = async (
     day: data.date
   });
 
-  // Atualiza o estoque
   const productRef = doc(db, "quantities", data.productId);
   const productSnap = await getDoc(productRef);
 
@@ -175,7 +172,7 @@ export const saveMovement = async (
 };
 
 // ------------------------------------------------------
-// ENTRADA DE PRODUTO (1 movimento somente)
+// ENTRADA DE PRODUTO
 // ------------------------------------------------------
 
 export const addProductToStock = async (
@@ -220,9 +217,9 @@ export const getAllMovements = async (): Promise<StockMovement[]> => {
   });
 };
 
-// ------------------------------------------------------
-// CATEGORIAS
-// ------------------------------------------------------
+// ======================================================
+// CATEGORIAS — COMPLETO
+// ======================================================
 
 export const saveCategory = async (name: string) => {
   const formatted = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
@@ -238,6 +235,21 @@ export const onCategoriesUpdate = (callback: (categories: string[]) => void) => 
   return onSnapshot(categoriesRef, (snapshot) => {
     callback(snapshot.docs.map((doc) => doc.data().name as string));
   });
+};
+
+export const categoryHasProducts = async (category: string): Promise<boolean> => {
+  const q = query(quantitiesRef, where("category", "==", category));
+  const snap = await getDocs(q);
+  return !snap.empty;
+};
+
+export const deleteCategory = async (name: string) => {
+  const q = query(categoriesRef, where("name", "==", name));
+  const snap = await getDocs(q);
+
+  for (const d of snap.docs) {
+    await deleteDoc(d.ref);
+  }
 };
 
 // ------------------------------------------------------
@@ -264,4 +276,14 @@ export const fetchProducts = async (): Promise<ProductQuantity[]> => {
     console.error("Erro ao buscar produtos:", error);
     return [];
   }
+};
+
+// ------------------------------------------------------
+// VERIFICAR SE PRODUTO JÁ EXISTE POR NOME
+// ------------------------------------------------------
+export const productExists = async (name: string): Promise<boolean> => {
+  const formatted = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+  const q = query(quantitiesRef, where("name", "==", formatted));
+  const snap = await getDocs(q);
+  return !snap.empty;
 };

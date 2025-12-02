@@ -14,6 +14,7 @@ import {
   getCategories,
   saveCategory,
   onCategoriesUpdate,
+  productExists,
 } from "../firebase/firestore/products";
 
 export const NovoProduto: React.FC = () => {
@@ -82,7 +83,6 @@ export const NovoProduto: React.FC = () => {
   const handleSave = async () => {
     if (!name || !category || quantity === "" || price === "") {
       setAlert({ message: "Preencha todos os campos!", type: "error" });
-      setTimeout(() => setAlert(null), 2000);
       return;
     }
 
@@ -91,11 +91,21 @@ export const NovoProduto: React.FC = () => {
     const parsedPrice = parseCurrency(price);
     const parsedQuantity = Number(quantity) || 0;
 
-    // 🔥 FIX PRINCIPAL: SALVA PRODUTO COM QUANTIDADE 0
+    const finalName = capitalize(name);
+    const finalCategory = capitalize(category);
+
+    // ❗ Verificar nome duplicado
+    const alreadyExists = await productExists(finalName);
+    if (alreadyExists) {
+      setAlert({ message: "Já existe um produto com esse nome!", type: "error" });
+      setLoading(false);
+      return;
+    }
+
     const newProduct: Omit<ProductQuantity, "id"> = {
-      name: capitalize(name),
-      category: capitalize(category),
-      quantity: 0, // <<<<<<<<<<<<<<<<<<<<<<<< FIX QUE IMPEDIU DOBRAR
+      name: finalName,
+      category: finalCategory,
+      quantity: 0,
       cost: parsedPrice,
       unitPrice: parsedPrice,
       image: preview ? String(preview) : null,
@@ -103,10 +113,8 @@ export const NovoProduto: React.FC = () => {
     };
 
     try {
-      // Salva produto no Firestore
       const productRef = await saveProduct(newProduct);
 
-      // Movimento inicial (apenas UM!)
       if (parsedQuantity > 0) {
         await addProductToStock(
           productRef.id,
@@ -118,13 +126,10 @@ export const NovoProduto: React.FC = () => {
       }
 
       setAlert({ message: "Produto adicionado!", type: "success" });
-      setTimeout(() => setAlert(null), 1500);
-
       navigate("/estoque");
     } catch (err) {
       console.error("Erro ao salvar produto:", err);
       setAlert({ message: "Erro ao salvar!", type: "error" });
-      setTimeout(() => setAlert(null), 2000);
     }
 
     setLoading(false);
@@ -141,7 +146,13 @@ export const NovoProduto: React.FC = () => {
 
   return (
     <div className="p-8 w-full">
-      {alert && <AlertBanner {...alert} onClose={() => setAlert(null)} />}
+      {alert && (
+        <AlertBanner
+          message={alert.message}
+          type={alert.type}
+          onClose={() => setAlert(null)}
+        />
+      )}
 
       <h1 className="text-3xl font-semibold mb-8">Adicionar Novo Produto</h1>
 
@@ -166,6 +177,7 @@ export const NovoProduto: React.FC = () => {
               />
             </label>
           )}
+
           {preview && (
             <label className="mt-4 cursor-pointer text-sm text-lime-900 font-semibold hover:underline">
               Trocar imagem
