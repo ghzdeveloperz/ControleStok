@@ -1,5 +1,9 @@
+// src/pages/store/products.ts
 import { create } from "zustand";
-import { Product } from "../types";
+import { Product } from "../../types";
+
+
+
 
 interface ProductsState {
   products: Product[];

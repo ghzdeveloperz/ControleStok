@@ -159,7 +159,7 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
 
           <select
             value={selectedProductId ?? ""}
-            onChange={(e) => setSelectedProductId(Number(e.target.value))}
+            onChange={(e) => setSelectedProductId(e.target.value)}
             className="cursor-pointer px-3 py-2 border rounded w-full"
           >
             {filteredProducts.map((p) => (

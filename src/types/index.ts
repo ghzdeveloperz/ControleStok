@@ -1,10 +1,13 @@
+// src/types/index.ts
 export interface Product {
-  id?: string | number;
+  id: string | number;
   name: string;
-  unit?: string;      // <-- opcional
-  supplier?: string;  // <-- opcional
-  stock?: number;
+  unit?: string;
+  supplier?: string;
+  stock: number;
   unitPrice?: number;
   price?: number;
+  minStock?: number;
+  image?: string;
+  category?: string;
 }
-    
