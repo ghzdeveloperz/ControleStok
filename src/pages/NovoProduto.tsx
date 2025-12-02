@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaPlus } from "react-icons/fa";
-
 import { ModalAddCategory } from "../components/modals/ModalAddCategory";
 import { AlertBanner } from "../components/AlertBanner";
 
@@ -24,19 +23,14 @@ export const NovoProduto: React.FC = () => {
   const [category, setCategory] = useState("");
   const [quantity, setQuantity] = useState<number | "">("");
   const [price, setPrice] = useState<string>("");
-
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [categoriasExistentes, setCategoriasExistentes] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // -------------------------------
-  // CATEGORIAS
-  // -------------------------------
   useEffect(() => {
     const fetchCats = async () => {
       const cats = await getCategories();
@@ -50,21 +44,21 @@ export const NovoProduto: React.FC = () => {
 
   const formatCurrency = (value: string) => {
     const clean = value.replace(/\D/g, "");
-    const number = Number(clean) / 100;
-    return number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const num = Number(clean) / 100;
+    return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   };
 
   const parseCurrency = (formatted: string) => {
     const clean = formatted.replace(/\D/g, "");
-    const number = Number(clean) / 100;
-    return isNaN(number) ? 0 : number;
+    const num = Number(clean) / 100;
+    return isNaN(num) ? 0 : num;
   };
 
-  const capitalize = (text: string) =>
-    text
-      ? text
+  const capitalize = (t: string) =>
+    t
+      ? t
           .split(" ")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
           .join(" ")
       : "";
 
@@ -77,9 +71,6 @@ export const NovoProduto: React.FC = () => {
     } else setPreview(null);
   };
 
-  // -------------------------------
-  // SALVAR PRODUTO
-  // -------------------------------
   const handleSave = async () => {
     if (!name || !category || quantity === "" || price === "") {
       setAlert({ message: "Preencha todos os campos!", type: "error" });
@@ -90,13 +81,11 @@ export const NovoProduto: React.FC = () => {
 
     const parsedPrice = parseCurrency(price);
     const parsedQuantity = Number(quantity) || 0;
-
     const finalName = capitalize(name);
     const finalCategory = capitalize(category);
 
-    // ❗ Verificar nome duplicado
-    const alreadyExists = await productExists(finalName);
-    if (alreadyExists) {
+    const exists = await productExists(finalName);
+    if (exists) {
       setAlert({ message: "Já existe um produto com esse nome!", type: "error" });
       setLoading(false);
       return;
@@ -113,22 +102,23 @@ export const NovoProduto: React.FC = () => {
     };
 
     try {
-      const productRef = await saveProduct(newProduct);
+      const ref = await saveProduct(newProduct);
 
       if (parsedQuantity > 0) {
-        await addProductToStock(
-          productRef.id,
-          newProduct.name,
-          parsedQuantity,
-          parsedPrice,
-          parsedPrice
-        );
+        // ⏰ Ajuste para salvar a data no horário de Brasília
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, "0");
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const year = now.getFullYear();
+        const dateStr = `${year}-${month}-${day}`;
+
+        await addProductToStock(ref.id, newProduct.name, parsedQuantity, parsedPrice, parsedPrice, dateStr);
       }
 
       setAlert({ message: "Produto adicionado!", type: "success" });
       navigate("/estoque");
     } catch (err) {
-      console.error("Erro ao salvar produto:", err);
+      console.error(err);
       setAlert({ message: "Erro ao salvar!", type: "error" });
     }
 
@@ -136,16 +126,16 @@ export const NovoProduto: React.FC = () => {
   };
 
   const handleAddCategory = async (name: string) => {
-    const capitalized = capitalize(name);
-    if (!categoriasExistentes.includes(capitalized)) {
-      await saveCategory(capitalized);
+    const formatted = capitalize(name);
+    if (!categoriasExistentes.includes(formatted)) {
+      await saveCategory(formatted);
     }
-    setCategory(capitalized);
+    setCategory(formatted);
     setModalOpen(false);
   };
 
   return (
-    <div className="p-8 w-full">
+    <div className="p-4 sm:p-6 md:p-8 w-full max-w-4xl mx-auto">
       {alert && (
         <AlertBanner
           message={alert.message}
@@ -154,21 +144,25 @@ export const NovoProduto: React.FC = () => {
         />
       )}
 
-      <h1 className="text-3xl font-semibold mb-8">Adicionar Novo Produto</h1>
+      <h1 className="text-2xl sm:text-3xl font-semibold mb-6 sm:mb-8 text-center sm:text-left">
+        Adicionar Novo Produto
+      </h1>
 
-      <div className="flex flex-col gap-8 w-full">
+      {/* LAYOUT RESPONSIVO */}
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
+
         {/* IMAGEM */}
-        <div className="w-full flex flex-col items-center bg-white shadow-sm rounded-2xl p-6 border border-gray-200">
+        <div className="w-full lg:w-1/2 flex flex-col items-center bg-white shadow-sm rounded-2xl p-4 sm:p-6 border border-gray-200">
           {preview ? (
             <img
               src={preview}
               alt="Prévia"
-              className="w-full max-w-sm h-64 object-cover rounded-xl shadow-md"
+              className="w-full max-w-xs sm:max-w-sm h-52 sm:h-64 object-cover rounded-xl shadow-md"
             />
           ) : (
-            <label className="w-full max-w-sm h-64 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 hover:border-lime-600 hover:bg-gray-100 cursor-pointer transition">
-              <FaPlus className="text-gray-400 text-5xl mb-2" />
-              <span className="text-gray-500 text-sm font-medium">Selecionar imagem</span>
+            <label className="w-full max-w-xs sm:max-w-sm h-52 sm:h-64 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 hover:border-lime-600 hover:bg-gray-100 cursor-pointer transition">
+              <FaPlus className="text-gray-400 text-4xl sm:text-5xl mb-2" />
+              <span className="text-gray-500 text-xs sm:text-sm font-medium">Selecionar imagem</span>
               <input
                 type="file"
                 accept="image/*"
@@ -179,7 +173,7 @@ export const NovoProduto: React.FC = () => {
           )}
 
           {preview && (
-            <label className="mt-4 cursor-pointer text-sm text-lime-900 font-semibold hover:underline">
+            <label className="mt-3 cursor-pointer text-sm text-lime-900 font-semibold hover:underline">
               Trocar imagem
               <input
                 type="file"
@@ -191,9 +185,11 @@ export const NovoProduto: React.FC = () => {
           )}
         </div>
 
-        {/* FORM */}
-        <div className="flex-1 bg-white shadow-sm rounded-2xl p-8 border border-gray-200">
-          <div className="flex flex-col gap-7">
+        {/* FORMULÁRIO */}
+        <div className="w-full lg:w-1/2 bg-white shadow-sm rounded-2xl p-4 sm:p-6 border border-gray-200">
+          <div className="flex flex-col gap-6">
+
+            {/* NOME */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Nome do produto</span>
               <input
@@ -201,21 +197,23 @@ export const NovoProduto: React.FC = () => {
                 placeholder="Ex: Coca-Cola Lata"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="px-4 py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black/10 outline-none"
+                className="px-3 py-2 sm:px-4 sm:py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black/10 outline-none"
               />
             </div>
 
-            <div className="flex flex-col gap-2">
+            {/* CATEGORIAS */}
+            <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Categoria</span>
-              <div className="flex gap-3 flex-wrap">
+
+              <div className="flex gap-3 overflow-x-auto no-scrollbar flex-nowrap py-1">
                 {categoriasExistentes.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setCategory(cat)}
-                    className={`px-4 py-2 rounded-xl border transition cursor-pointer ${
+                    className={`px-4 py-2 rounded-xl border whitespace-nowrap transition ${
                       category === cat
                         ? "bg-lime-900 text-white border-lime-900"
-                        : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
+                        : "bg-gray-100 text-gray-700 border-gray-300"
                     }`}
                   >
                     {cat}
@@ -224,13 +222,14 @@ export const NovoProduto: React.FC = () => {
 
                 <button
                   onClick={() => setModalOpen(true)}
-                  className="w-12 h-12 rounded-xl border border-gray-300 bg-gray-100 flex items-center justify-center text-xl text-gray-500 hover:bg-gray-200 transition cursor-pointer"
+                  className="min-w-12 h-12 rounded-xl border border-gray-300 bg-gray-100 flex items-center justify-center text-xl text-gray-500 hover:bg-gray-200 transition"
                 >
                   +
                 </button>
               </div>
             </div>
 
+            {/* QUANTIDADE */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Quantidade inicial</span>
               <input
@@ -241,10 +240,11 @@ export const NovoProduto: React.FC = () => {
                 onChange={(e) =>
                   setQuantity(e.target.value === "" ? "" : Number(e.target.value))
                 }
-                className="px-4 py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black/10 outline-none"
+                className="px-3 py-2 sm:px-4 sm:py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black/10 outline-none"
               />
             </div>
 
+            {/* PREÇO */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Preço (R$)</span>
               <input
@@ -252,15 +252,16 @@ export const NovoProduto: React.FC = () => {
                 placeholder="R$ 0,00"
                 value={price}
                 onChange={(e) => setPrice(formatCurrency(e.target.value))}
-                className="px-4 py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black/10 outline-none"
+                className="px-3 py-2 sm:px-4 sm:py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black/10 outline-none"
               />
             </div>
 
-            <div className="flex justify-end pt-4">
+            {/* BOTÃO */}
+            <div className="flex justify-end pt-2 sm:pt-4">
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="px-6 py-3 rounded-xl bg-lime-900 text-white hover:bg-lime-800 transition cursor-pointer"
+                className="px-5 py-2 sm:px-6 sm:py-3 rounded-xl bg-lime-900 text-white hover:bg-lime-800 transition"
               >
                 {loading ? "Salvando..." : "Adicionar Produto"}
               </button>

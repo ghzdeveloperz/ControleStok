@@ -1,3 +1,4 @@
+// src/pages/Dashboard.tsx
 import React, { useState } from "react";
 import { FaBoxes, FaChartBar, FaCog, FaBars, FaPlus } from "react-icons/fa";
 

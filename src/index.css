@@ -17,3 +17,77 @@ svg:focus {
 h1, h2, h3, h4, h5, h6, p, button, checkbox, input, label, div, date {
   font-family: 'Poppins', sans-serif;
 }
+
+/* ===== SCROLLBAR DA PÁGINA BRANCA ===== */
+html, body {
+  scrollbar-width: thin;
+  scrollbar-color: #ffffff #ececec; /* polegar / track */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 8px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: #ececec;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  background-color: #ffffff;
+  border-radius: 4px;
+  border: 2px solid #ececec;
+}
+
+/* ===== REMOVER BARRA DE SCROLL DE DIVS ESPECÍFICAS ===== */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Impede scroll lateral e mantém altura total */
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  min-height: 100%;
+}
+
+/* Evita scroll fantasma, mas permite scroll no conteúdo */
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ===================== SCROLL LISO ===================== */
+.page-content {
+  overflow-y: auto; /* permite scroll vertical */
+  overflow-x: hidden; /* evita scroll lateral */
+  -webkit-overflow-scrolling: touch; /* scroll suave no iOS */
+  min-height: 100%; /* garante altura mínima para scroll */
+}
+
+
+/* Footer sempre na frente sem atrapalhar o conteúdo */
+footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+}
+
+/* Conteúdo passa por cima do fundo do footer sem ser coberto */
+.page-content {
+  position: relative;
+  z-index: 100;
+}

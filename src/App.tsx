@@ -9,9 +9,12 @@ import { NovoProduto } from "./pages/NovoProduto";
 import { Alertas } from "./pages/Alertas";
 import { LoadingProvider } from "./contexts/LoadingContext";
 import { useProducts } from "./hooks/useProducts";
+import { FaBoxes, FaPlus, FaChartBar, FaExclamationTriangle, FaCog } from "react-icons/fa";
 
 export const AppContent: React.FC = () => {
   const navigate = useNavigate();
+
+  const [sidebarWidth, setSidebarWidth] = useState(260);
 
   const [logoSrc, setLogoSrc] = useState(
     localStorage.getItem("appLogo") ?? "/images/jinjin-banner.png"
@@ -24,21 +27,21 @@ export const AppContent: React.FC = () => {
 
   const [userID] = useState("usuário");
 
-  // Hook de produtos
   const { products } = useProducts();
 
-  // Contadores para a Sidebar
   const [lowStockCount, setLowStockCount] = useState(0);
   const [zeroStockCount, setZeroStockCount] = useState(0);
 
   useEffect(() => {
     let low = 0;
     let zero = 0;
+
     products.forEach((p) => {
       const qty = p.quantity ?? 0;
       if (qty === 0) zero++;
       else if (qty <= 10) low++;
     });
+
     setLowStockCount(low);
     setZeroStockCount(zero);
   }, [products]);
@@ -52,8 +55,11 @@ export const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen w-full overflow-hidden">
+      {/* SIDEBAR DESKTOP */}
       <Sidebar
+        width={sidebarWidth}
+        setWidth={setSidebarWidth}
         logoSrc={logoSrc}
         profileSrc={profileSrc}
         userId={userID}
@@ -61,7 +67,26 @@ export const AppContent: React.FC = () => {
         zeroStockCount={zeroStockCount}
       />
 
-      <div className="flex-1 bg-gray-50 overflow-auto">
+      {/* ÁREA PRINCIPAL */}
+      <div
+        className="page-content
+    flex-1
+    bg-gray-50
+    overflow-y-auto
+    overflow-x-auto
+    scroll-smooth
+    min-h-screen
+    ml-0
+    md:ml-[var(--sidebar-w)]
+    transition-all duration-150
+    relative
+  "
+        style={{
+          ["--sidebar-w" as any]: `${sidebarWidth}px`,
+          paddingBottom: "70px", // garante espaço para o footer móvel
+        }}
+      >
+
         <Routes>
           <Route path="/" element={<Navigate to="/estoque" replace />} />
           <Route path="/estoque" element={<Estoque />} />
@@ -89,10 +114,92 @@ export const AppContent: React.FC = () => {
 
           <Route path="*" element={<Navigate to="/estoque" replace />} />
         </Routes>
+
+        {/* FOOTER MÓVEL */}
+        <div
+          className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-300 flex justify-around items-center py-3 md:hidden z-50 shadow-lg rounded-t-2xl"
+        >
+          <MobileItem
+            active={window.location.pathname === "/estoque"}
+            icon={<FaBoxes size={22} />}
+            label="Estoque"
+            onClick={() => navigate("/estoque")}
+          />
+          <MobileItem
+            active={window.location.pathname === "/estoque/novoproduto"}
+            icon={<FaPlus size={22} />}
+            label="Novo"
+            onClick={() => navigate("/estoque/novoproduto")}
+          />
+          <MobileItem
+            active={window.location.pathname === "/relatorios"}
+            icon={<FaChartBar size={22} />}
+            label="Relatórios"
+            onClick={() => navigate("/relatorios")}
+          />
+          <MobileItem
+            active={window.location.pathname === "/alertas"}
+            icon={<FaExclamationTriangle size={22} />}
+            label="Alertas"
+            onClick={() => navigate("/alertas")}
+            low={lowStockCount}
+            zero={zeroStockCount}
+          />
+          <MobileItem
+            active={window.location.pathname === "/configuracoes"}
+            icon={<FaCog size={22} />}
+            label="Config"
+            onClick={() => navigate("/configuracoes")}
+          />
+        </div>
       </div>
     </div>
   );
 };
+
+// ---------------------- MOBILE ITEM ----------------------
+function MobileItem({
+  icon,
+  label,
+  active,
+  onClick,
+  low,
+  zero,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+  low?: number;
+  zero?: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex flex-col items-center px-3 py-1.5 rounded-xl transition-all 
+      ${active ? "bg-black text-white" : "text-gray-700 hover:bg-gray-200"}`}
+    >
+      <div className="relative">
+        {icon}
+        <div className="absolute -top-1 -right-2 flex gap-0.5">
+          {low! > 0 && (
+            <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              {low}
+            </span>
+          )}
+          {zero! > 0 && (
+            <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              {zero}
+            </span>
+          )}
+        </div>
+      </div>
+      <span className={`text-xs mt-1 ${active ? "text-white" : "text-gray-700"}`}>
+        {label}
+      </span>
+    </button>
+  );
+}
 
 export const App: React.FC = () => (
   <LoadingProvider>

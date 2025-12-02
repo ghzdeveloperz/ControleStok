@@ -2,11 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Product } from "../ProductCard";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { AlertBanner } from "../../components/AlertBanner";
 
 interface ModalRemoveProductProps {
   products: Product[];
   onClose: () => void;
-  onRemove: (productId: string, quantity: number, date?: string) => Promise<void>;
+  onRemove: (productId: string, quantity: number, date: string) => Promise<void>;
 }
 
 export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
@@ -22,7 +23,10 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   const [exitDate, setExitDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // ---------- 🔥 SINCRONIZA SELECT COM CAMPO DE BUSCA ----------
+  // Estado do alerta
+  const [alert, setAlert] = useState<{ message: string; type: "success" | "error"; key: number } | null>(null);
+  const [alertKey, setAlertKey] = useState(0); // Para forçar re-render do mesmo alerta
+
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -34,7 +38,6 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
       setSelectedProductId("");
     }
   }, [search, products]);
-  // -------------------------------------------------------------
 
   useEffect(() => {
     if (products.length > 0 && !products.find(p => String(p.id) === selectedProductId)) {
@@ -42,22 +45,33 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
     }
   }, [products, selectedProductId]);
 
+  const showAlert = (message: string, type: "success" | "error") => {
+    setAlert({ message, type, key: alertKey });
+    setAlertKey((prev) => prev + 1);
+  };
+
   const handleRemove = async () => {
-    if (!selectedProductId || quantity === "") return;
+    if (!selectedProductId || quantity === "") {
+      showAlert("Selecione um produto e uma quantidade.", "error");
+      return;
+    }
+
+    if (!exitDate) {
+      showAlert("A data de saída é obrigatória.", "error");
+      return;
+    }
 
     const product = products.find((p) => String(p.id) === selectedProductId);
     if (!product) return;
 
     if (Number(quantity) > product.quantity) {
-      alert(`Não é possível remover mais que ${product.quantity} unidades.`);
+      showAlert(`Não é possível remover mais que ${product.quantity} unidades.`, "error");
       return;
     }
 
     setLoading(true);
 
-    const dateStr = exitDate
-      ? exitDate.toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0];
+    const dateStr = exitDate.toISOString().split("T")[0];
 
     try {
       await onRemove(selectedProductId, Number(quantity), dateStr);
@@ -66,10 +80,11 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
       setExitDate(null);
       setSearch("");
       setSelectedProductId(filteredProducts[0]?.id ?? "");
+      showAlert("Produto removido com sucesso!", "success");
       onClose();
     } catch (err) {
       console.error("Erro ao remover item:", err);
-      alert("Erro ao remover produto. Veja console.");
+      showAlert("Erro ao remover produto. Veja console.", "error");
     } finally {
       setLoading(false);
     }
@@ -78,6 +93,16 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
+        {/* ALERTA */}
+        {alert && (
+          <AlertBanner
+            key={alert.key}
+            message={alert.message}
+            type={alert.type}
+            onClose={() => setAlert(null)}
+          />
+        )}
+
         <h2 className="text-xl font-bold mb-4">Remover Produto</h2>
 
         <div className="flex flex-col gap-3">
@@ -116,7 +141,7 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
             selected={exitDate}
             onChange={(date) => setExitDate(date)}
             className="cursor-pointer px-3 py-2 border rounded w-full"
-            placeholderText="Escolha a data de saída (opcional)"
+            placeholderText="Escolha a data de saída"
             dateFormat="yyyy-MM-dd"
           />
         </div>
