@@ -1,6 +1,10 @@
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   theme: {
     extend: {
+      fontFamily: {
+        poppins: ['Poppins', 'sans-serif'], // adiciona a Poppins
+      },
       keyframes: {
         elastic: {
           '0%': { transform: 'translateX(-50%) scale(0.8)' },

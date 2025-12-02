@@ -108,7 +108,8 @@ export const Estoque: React.FC = () => {
       {alert && <AlertBanner {...alert} onClose={() => setAlert(null)} />}
 
       <div className="flex justify-between items-center mb-4 flex-wrap">
-        <h1 className="text-2xl font-bold text-gray-800">Estoque</h1>
+        <h1 className="font-poppins text-2xl font-bold text-gray-800">Estoque</h1>
+
 
         <div className="flex gap-2 flex-wrap">
           <button
