@@ -11,10 +11,7 @@ export interface Product extends ProductQuantity {
 interface ProductCardProps {
   products: Product[];
   removeMode?: boolean;
-
-  // ⬅ onRemove AGORA TIPADO CORRETAMENTE
   onRemove?: (productId: string) => void;
-
   onSelect?: (product: Product) => void;
   setProducts?: React.Dispatch<React.SetStateAction<Product[]>>;
 }
@@ -26,17 +23,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onSelect,
   setProducts,
 }) => {
-  
+
   const handleRemove = async (id: string) => {
     try {
       await removeProduct(id);
 
-      // atualiza estado local (evita duplicações)
       if (setProducts) {
         setProducts(prev => prev.filter(p => p.id !== id));
       }
 
-      // dispara callback se existir
       if (onRemove) onRemove(id);
 
     } catch (err) {
@@ -50,12 +45,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         const safePrice = Number(product.price ?? 0);
         const safeUnitPrice = Number(product.unitPrice ?? safePrice);
         const safeQuantity = Number(product.quantity ?? 0);
+
+        // ⬅️ Aqui está o estoque mínimo REAL do produto
+        const safeMinStock = Number(product.minStock ?? 10);
+
         const totalPrice = safeUnitPrice * safeQuantity;
 
-        // Lógica de status atualizada
+        // Lógica de status PEGANDO o estoque mínimo real
         let status = "OK";
         if (safeQuantity === 0) status = "Zerado";
-        else if (safeQuantity <= 10) status = "Baixo";
+        else if (safeQuantity <= safeMinStock) status = "Baixo";
 
         const statusIndicatorClasses: Record<string, string> = {
           OK: "bg-green-600 text-white",

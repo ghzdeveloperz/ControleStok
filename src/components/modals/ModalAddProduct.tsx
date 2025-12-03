@@ -1,5 +1,5 @@
 // src/components/modals/ModalAddProduct.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Product } from "../ProductCard";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -38,6 +38,20 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
   );
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
+
+  // ✅ FIX: Mantém o produto selecionado sempre sincronizado com o filtro
+  useEffect(() => {
+    if (filteredProducts.length === 0) {
+      setSelectedProductId(null);
+      return;
+    }
+
+    const stillExists = filteredProducts.some((p) => p.id === selectedProductId);
+
+    if (!stillExists) {
+      setSelectedProductId(filteredProducts[0].id);
+    }
+  }, [search, filteredProducts]);
 
   const formatCurrency = (value: string) => {
     const clean = value.replace(/\D/g, "");
@@ -102,11 +116,10 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
 
     prod.unitPrice = loteCost;
 
-    // 👉 FECHA O MODAL IMEDIATAMENTE APÓS onAdd
+    // Fecha modal ANTES de salvar
     onAdd(selectedProductId, qty, dateStr, newAvgCost, loteCost);
     onClose();
 
-    // 👉 Depois disso roda o backend sem travar o usuário
     try {
       await saveMovement({
         productId: selectedProductId,
