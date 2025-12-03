@@ -2,18 +2,20 @@ import React, { useState, useEffect } from "react";
 import { FaTrash, FaPen } from "react-icons/fa";
 import { Product } from "../ProductCard";
 import { ModalConfirmRemove } from "./ModalConfirmRemove";
-import { getCategories } from "../../firebase/firestore/products";
+import { getCategoriesForUser } from "../../firebase/firestore/categories";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
 
 interface Props {
   product: Product;
+  userId: string; // obrigatória para buscar categorias do usuário
   onClose: () => void;
   onRemove: (productId: Product["id"], removeEntire?: boolean) => Promise<void>;
 }
 
 export const ProductDetailsModal: React.FC<Props> = ({
   product,
+  userId,
   onClose,
   onRemove,
 }) => {
@@ -26,22 +28,21 @@ export const ProductDetailsModal: React.FC<Props> = ({
   const [editingMinStock, setEditingMinStock] = useState(false);
 
   const [localName, setLocalName] = useState(product.name ?? "");
-  const [localUnitPrice, setLocalUnitPrice] = useState(
-    Number(product.unitPrice ?? 0)
-  );
+  const [localUnitPrice, setLocalUnitPrice] = useState(Number(product.unitPrice ?? 0));
   const [localCategory, setLocalCategory] = useState(product.category);
-  const [localMinStock, setLocalMinStock] = useState(
-    Number(product.minStock ?? 10)
-  );
+  const [localMinStock, setLocalMinStock] = useState(Number(product.minStock ?? 10));
 
+  // Carregar categorias do usuário
   useEffect(() => {
-    const load = async () => {
-      const list = await getCategories();
+    const loadCategories = async () => {
+      if (!userId) return;
+      const list = await getCategoriesForUser(userId);
       setCategories(list);
     };
-    load();
-  }, []);
+    loadCategories();
+  }, [userId]);
 
+  // Atualizar valores locais quando o produto mudar
   useEffect(() => {
     setLocalName(product.name ?? "");
     setLocalUnitPrice(Number(product.unitPrice ?? 0));
@@ -52,9 +53,7 @@ export const ProductDetailsModal: React.FC<Props> = ({
   const formatCurrency = (value: number) =>
     value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  const safeImage =
-    product.image ?? "https://via.placeholder.com/400x300?text=Sem+Imagem";
-
+  const safeImage = product.image ?? "https://via.placeholder.com/400x300?text=Sem+Imagem";
   const safePrice = Number(product.price);
   const safeQuantity = Number(product.quantity);
   const totalCost = safePrice * safeQuantity;
@@ -65,23 +64,17 @@ export const ProductDetailsModal: React.FC<Props> = ({
   };
 
   const handleSaveUnitPrice = async () => {
-    await updateDoc(doc(db, "quantities", product.id), {
-      unitPrice: Number(localUnitPrice),
-    });
+    await updateDoc(doc(db, "quantities", product.id), { unitPrice: Number(localUnitPrice) });
     setEditingUnitPrice(false);
   };
 
   const handleSaveCategory = async () => {
-    await updateDoc(doc(db, "quantities", product.id), {
-      category: localCategory,
-    });
+    await updateDoc(doc(db, "quantities", product.id), { category: localCategory });
     setEditingCategory(false);
   };
 
   const handleSaveMinStock = async () => {
-    await updateDoc(doc(db, "quantities", product.id), {
-      minStock: Number(localMinStock || 10),
-    });
+    await updateDoc(doc(db, "quantities", product.id), { minStock: Number(localMinStock || 10) });
     setEditingMinStock(false);
   };
 
@@ -96,7 +89,7 @@ export const ProductDetailsModal: React.FC<Props> = ({
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
 
-          {/* REMOVER */}
+          {/* Botão Remover */}
           <button
             onClick={() => setShowConfirmRemove(true)}
             className="absolute top-4 right-4 text-red-600 hover:text-red-800 cursor-pointer"
@@ -108,7 +101,6 @@ export const ProductDetailsModal: React.FC<Props> = ({
           <h2 className="text-xl font-bold mb-4">Informações do Produto</h2>
 
           <div className="flex flex-col gap-3">
-
             <img
               src={safeImage}
               alt={localName}
@@ -117,10 +109,7 @@ export const ProductDetailsModal: React.FC<Props> = ({
 
             {/* NOME */}
             <div className="flex items-center gap-2">
-              <p className="text-lg font-semibold">
-                {!editingName ? localName : ""}
-              </p>
-
+              <p className="text-lg font-semibold">{!editingName ? localName : ""}</p>
               {!editingName && (
                 <button
                   onClick={() => setEditingName(true)}
@@ -138,14 +127,12 @@ export const ProductDetailsModal: React.FC<Props> = ({
                   value={localName}
                   onChange={(e) => setLocalName(e.target.value)}
                 />
-
                 <button
                   onClick={handleSaveName}
                   className="px-3 py-1 bg-black text-white text-sm rounded cursor-pointer"
                 >
                   Salvar
                 </button>
-
                 <button
                   onClick={() => {
                     setLocalName(product.name ?? "");
@@ -160,13 +147,10 @@ export const ProductDetailsModal: React.FC<Props> = ({
 
             {/* CATEGORIA */}
             <div className="flex flex-col gap-2">
-
               <div className="flex items-center gap-2">
                 <p className="text-sm">
-                  <strong>Categoria:</strong>{" "}
-                  {!editingCategory ? localCategory : ""}
+                  <strong>Categoria:</strong> {!editingCategory ? localCategory : ""}
                 </p>
-
                 {!editingCategory && (
                   <button
                     onClick={() => setEditingCategory(true)}
@@ -190,14 +174,12 @@ export const ProductDetailsModal: React.FC<Props> = ({
                       </option>
                     ))}
                   </select>
-
                   <button
                     onClick={handleSaveCategory}
                     className="px-3 py-1 bg-black text-white text-sm rounded cursor-pointer"
                   >
                     Salvar
                   </button>
-
                   <button
                     onClick={() => {
                       setLocalCategory(product.category);
@@ -213,10 +195,8 @@ export const ProductDetailsModal: React.FC<Props> = ({
               {/* PREÇO UNITÁRIO */}
               <div className="flex items-center gap-2">
                 <p className="text-sm">
-                  <strong>Preço unitário:</strong>{" "}
-                  {!editingUnitPrice ? formatCurrency(localUnitPrice) : ""}
+                  <strong>Preço unitário:</strong> {!editingUnitPrice ? formatCurrency(localUnitPrice) : ""}
                 </p>
-
                 {!editingUnitPrice && (
                   <button
                     onClick={() => setEditingUnitPrice(true)}
@@ -226,25 +206,20 @@ export const ProductDetailsModal: React.FC<Props> = ({
                   </button>
                 )}
               </div>
-
               {editingUnitPrice && (
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
                     className="border p-1 w-24 rounded"
                     value={localUnitPrice}
-                    onChange={(e) =>
-                      setLocalUnitPrice(Number(e.target.value))
-                    }
+                    onChange={(e) => setLocalUnitPrice(Number(e.target.value))}
                   />
-
                   <button
                     onClick={handleSaveUnitPrice}
                     className="px-3 py-1 bg-black text-white text-sm rounded cursor-pointer"
                   >
                     Salvar
                   </button>
-
                   <button
                     onClick={() => {
                       setLocalUnitPrice(product.unitPrice ?? 0);
@@ -270,10 +245,8 @@ export const ProductDetailsModal: React.FC<Props> = ({
               {/* ESTOQUE MÍNIMO */}
               <div className="flex items-center gap-2">
                 <p className="text-sm">
-                  <strong>Estoque mínimo:</strong>{" "}
-                  {!editingMinStock ? localMinStock : ""}
+                  <strong>Estoque mínimo:</strong> {!editingMinStock ? localMinStock : ""}
                 </p>
-
                 {!editingMinStock && (
                   <button
                     onClick={() => setEditingMinStock(true)}
@@ -283,25 +256,20 @@ export const ProductDetailsModal: React.FC<Props> = ({
                   </button>
                 )}
               </div>
-
               {editingMinStock && (
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
                     className="border p-1 w-24 rounded"
                     value={localMinStock}
-                    onChange={(e) =>
-                      setLocalMinStock(Number(e.target.value))
-                    }
+                    onChange={(e) => setLocalMinStock(Number(e.target.value))}
                   />
-
                   <button
                     onClick={handleSaveMinStock}
                     className="px-3 py-1 bg-black text-white text-sm rounded cursor-pointer"
                   >
                     Salvar
                   </button>
-
                   <button
                     onClick={() => {
                       setLocalMinStock(product.minStock ?? 10);

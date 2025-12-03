@@ -1,4 +1,7 @@
 FUNCIONALIDADES ATUALIZADAS:
 
-- Status sempre correto, OK, ZERADO ou BAIXO
-- bug de não adionar entrada quando eu usava o campo busca
+- tela de login com users isolados
+- Quando o produto é adicionado, está indo com a categoria para ProductCard.tsx,
+
+Problemas a resolver:
+- Em ProductDetais.tsx eu não consigo salvar nenhuma informação se eu quiser ajustar

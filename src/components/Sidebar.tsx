@@ -197,7 +197,7 @@ export function Sidebar({
             } gap-3 bg-black rounded-full px-3 py-2`}
             style={{ width: collapsed ? 60 : width - 16 }}
           >
-            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white flex-shrink-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shrink-0">
               <img
                 src={profileSrc ?? "/images/default-profile.png"}
                 className="w-10 h-10 rounded-full object-cover"

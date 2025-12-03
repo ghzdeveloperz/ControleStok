@@ -1,3 +1,4 @@
+// src/components/modals/ModalAddCategory.tsx
 import React, { useState } from "react";
 
 interface ModalAddCategoryProps {

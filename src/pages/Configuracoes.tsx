@@ -1,33 +1,42 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from "react";
-import { FaTrash, FaPlus, FaUser, FaTags } from "react-icons/fa";
-import { onCategoriesUpdate } from "../firebase/firestore/products";
+import { FaTrash, FaPlus, FaUser, FaTags, FaSignOutAlt } from "react-icons/fa";
+import { onCategoriesUpdateForUser } from "../firebase/firestore/categories";
 import { ModalManageCategories } from "../components/modals/ModalManageCategories";
+import { useNavigate } from "react-router-dom"; // React Router
+import { ModalLogout } from "../components/modals/ModalLogout";
 
 interface ConfiguracoesProps {
   onLogoChange?: (newLogo: string) => void;
   onProfileChange?: (newProfile: string) => void;
   onLogout?: () => void;
+  userId?: string;
 }
 
 export const Configuracoes: React.FC<ConfiguracoesProps> = ({
   onLogoChange,
   onProfileChange,
   onLogout,
+  userId = "defaultUserId",
 }) => {
   const [logoSrc, setLogoSrc] = useState<string>("/images/jinjin-banner.png");
   const [profileSrc, setProfileSrc] = useState<string>("/images/profile-200.jpg");
   const [categories, setCategories] = useState<string[]>([]);
   const [showCategoriesModal, setShowCategoriesModal] = useState(false);
   const [activeSection, setActiveSection] = useState<"perfil" | "categoria">("perfil");
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const profileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Carregar categorias
+  const navigate = useNavigate(); // React Router
+
+  // Carregar categorias do Firebase
   useEffect(() => {
-    const unsub = onCategoriesUpdate((cats) => setCategories(cats));
+    const unsub = onCategoriesUpdateForUser(userId, (cats: string[]) => setCategories(cats));
     return () => unsub();
-  }, []);
+  }, [userId]);
 
   // Carregar imagens do localStorage
   useEffect(() => {
@@ -38,14 +47,16 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
     if (savedProfile) setProfileSrc(savedProfile);
   }, []);
 
+  // Upload e remoção de logo
   const handleUploadLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const img = new Image();
     img.onload = () => {
       if (img.width !== 1224 || img.height !== 260) {
         alert("O banner deve ter exatamente 1224x260 px");
-        logoInputRef.current!.value = "";
+        if (logoInputRef.current) logoInputRef.current.value = "";
         return;
       }
       const reader = new FileReader();
@@ -54,7 +65,7 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
         setLogoSrc(result);
         localStorage.setItem("appLogo", result);
         onLogoChange?.(result);
-        logoInputRef.current!.value = "";
+        if (logoInputRef.current) logoInputRef.current.value = "";
       };
       reader.readAsDataURL(file);
     };
@@ -67,14 +78,16 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
     onLogoChange?.("/images/jinjin-banner.png");
   };
 
+  // Upload e remoção de perfil
   const handleUploadProfile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const img = new Image();
     img.onload = () => {
       if (img.width !== 200 || img.height !== 200) {
         alert("A imagem deve ter exatamente 200x200 px");
-        profileInputRef.current!.value = "";
+        if (profileInputRef.current) profileInputRef.current.value = "";
         return;
       }
       const reader = new FileReader();
@@ -83,7 +96,7 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
         setProfileSrc(result);
         localStorage.setItem("profileImage", result);
         onProfileChange?.(result);
-        profileInputRef.current!.value = "";
+        if (profileInputRef.current) profileInputRef.current.value = "";
       };
       reader.readAsDataURL(file);
     };
@@ -96,30 +109,43 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
     onProfileChange?.("/images/profile-200.jpg");
   };
 
+  // Logout com redirecionamento para /estoque
+  const handleLogout = () => {
+    onLogout?.();
+    setActiveSection("perfil"); // resetar seção
+    navigate("/estoque"); // redireciona para tela inicial
+  };
+
   return (
     <div className="flex flex-col sm:flex-row gap-6 p-6 min-h-screen bg-gray-50">
-      
+
       {/* MENU LATERAL */}
       <div className="flex flex-row sm:flex-col gap-3 mb-4 sm:mb-0">
         <button
           onClick={() => setActiveSection("perfil")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl shadow font-semibold transition ${
-            activeSection === "perfil" ? "bg-gray-900 text-white" : "bg-white text-gray-800 hover:bg-gray-100"
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl shadow font-semibold transition cursor-pointer ${activeSection === "perfil" ? "bg-gray-900 text-white" : "bg-white text-gray-800 hover:bg-gray-100"}`}
         >
           <FaUser /> Perfil
         </button>
         <button
           onClick={() => setActiveSection("categoria")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl shadow font-semibold transition ${
-            activeSection === "categoria" ? "bg-gray-900 text-white" : "bg-white text-gray-800 hover:bg-gray-100"
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl shadow font-semibold transition cursor-pointer ${activeSection === "categoria" ? "bg-gray-900 text-white" : "bg-white text-gray-800 hover:bg-gray-100"}`}
         >
           <FaTags /> Categorias
         </button>
+
+        {/* BOTÃO DE LOGOUT */}
+        {onLogout && (
+          <button
+            onClick={() => setShowLogoutConfirm(true)}
+            className="flex items-center gap-2 px-4 py-2 mt-4 rounded-xl shadow font-semibold transition bg-red-600 text-white hover:bg-red-700 cursor-pointer"
+          >
+            <FaSignOutAlt /> Sair
+          </button>
+        )}
       </div>
 
-      {/* CONTEÚDO SEÇÃO */}
+      {/* CONTEÚDO */}
       <div className="flex-1 flex flex-col gap-6">
         {activeSection === "perfil" && (
           <>
@@ -206,7 +232,6 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
             </button>
           </>
         )}
-
       </div>
 
       {/* MODAL DE CATEGORIAS */}
@@ -215,6 +240,14 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
         onClose={() => setShowCategoriesModal(false)}
         categories={categories}
         setCategories={setCategories}
+        userId={userId}
+      />
+
+      {/* MODAL DE LOGOUT */}
+      <ModalLogout
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirmLogout={handleLogout}
       />
     </div>
   );

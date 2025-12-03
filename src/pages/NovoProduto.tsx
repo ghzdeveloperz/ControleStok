@@ -1,21 +1,32 @@
 // src/pages/NovoProduto.tsx
 "use client";
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaPlus } from "react-icons/fa";
 import { ModalAddCategory } from "../components/modals/ModalAddCategory";
 import { AlertBanner } from "../components/AlertBanner";
 
+// PRODUCTS
 import {
-  saveProduct,
+  saveProductForUser,
+  getProductsForUser,
   ProductQuantity,
-  getCategories,
-  saveCategory,
-  onCategoriesUpdate,
-  productExists,
 } from "../firebase/firestore/products";
 
-export const NovoProduto: React.FC = () => {
+// CATEGORIES
+import {
+  getCategoriesForUser,
+  saveCategoryForUser,
+  onCategoriesUpdateForUser,
+} from "../firebase/firestore/categories";
+
+
+interface NovoProdutoProps {
+  userId: string;
+}
+
+export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
@@ -31,16 +42,17 @@ export const NovoProduto: React.FC = () => {
   const [categoriasExistentes, setCategoriasExistentes] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
+  // Carrega categorias do usuário
   useEffect(() => {
     const fetchCats = async () => {
-      const cats = await getCategories();
+      const cats = await getCategoriesForUser(userId);
       setCategoriasExistentes(cats);
     };
     fetchCats();
 
-    const unsub = onCategoriesUpdate((cats) => setCategoriasExistentes(cats));
+    const unsub = onCategoriesUpdateForUser(userId, (cats) => setCategoriasExistentes(cats));
     return () => unsub();
-  }, []);
+  }, [userId]);
 
   const formatCurrency = (value: string) => {
     const clean = value.replace(/\D/g, "");
@@ -84,14 +96,17 @@ export const NovoProduto: React.FC = () => {
     const finalName = capitalize(name);
     const finalCategory = capitalize(category);
 
-    const exists = await productExists(finalName);
+    // ✅ Substituindo productExistsForUser
+    const allProducts = await getProductsForUser(userId);
+    const exists = allProducts.some((p) => p.name.toLowerCase() === finalName.toLowerCase());
+
     if (exists) {
       setAlert({ message: "Já existe um produto com esse nome!", type: "error" });
       setLoading(false);
       return;
     }
 
-    // 🚀 PRODUTO JÁ NASCE COM A QUANTIDADE FINAL  
+    // Produto já nasce com a quantidade inicial
     const newProduct: Omit<ProductQuantity, "id"> = {
       name: finalName,
       category: finalCategory,
@@ -103,7 +118,7 @@ export const NovoProduto: React.FC = () => {
     };
 
     try {
-      await saveProduct(newProduct);
+      await saveProductForUser(userId, newProduct);
 
       setAlert({ message: "Produto adicionado!", type: "success" });
       navigate("/estoque");
@@ -118,7 +133,7 @@ export const NovoProduto: React.FC = () => {
   const handleAddCategory = async (name: string) => {
     const formatted = capitalize(name);
     if (!categoriasExistentes.includes(formatted)) {
-      await saveCategory(formatted);
+      await saveCategoryForUser(userId, formatted);
     }
     setCategory(formatted);
     setModalOpen(false);
@@ -177,7 +192,7 @@ export const NovoProduto: React.FC = () => {
         {/* FORM */}
         <div className="w-full lg:w-1/2 bg-white shadow-sm rounded-2xl p-4 sm:p-6 border border-gray-200">
           <div className="flex flex-col gap-6">
-            
+
             {/* Nome */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Nome do produto</span>
@@ -255,7 +270,6 @@ export const NovoProduto: React.FC = () => {
                 {loading ? "Salvando..." : "Adicionar Produto"}
               </button>
             </div>
-
           </div>
         </div>
       </div>

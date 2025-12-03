@@ -1,16 +1,20 @@
+// src/components/modals/ModalManageCategories.tsx
 import React, { useState } from "react";
 import { FaTrash } from "react-icons/fa";
 import {
-  saveCategory,
-  deleteCategory as deleteCategoryFromFirestore,
-  categoryHasProducts
-} from "../../firebase/firestore/products";
+  saveCategoryForUser,
+  deleteCategoryForUser,
+} from "../../firebase/firestore/categories";
+
+import { ProductQuantity, getProductsForUser } from "../../firebase/firestore/products";
+
 
 interface ModalManageCategoriesProps {
   isOpen: boolean;
   onClose: () => void;
   categories: string[];
   setCategories: React.Dispatch<React.SetStateAction<string[]>>;
+  userId: string; // <-- necessário agora
 }
 
 export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
@@ -18,6 +22,7 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
   onClose,
   categories,
   setCategories,
+  userId,
 }) => {
   const [newCategory, setNewCategory] = useState("");
   const [errorDeleteMessage, setErrorDeleteMessage] = useState<string | null>(null);
@@ -33,10 +38,15 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
       return;
     }
 
-    await saveCategory(newCategory.trim());
+    await saveCategoryForUser(userId, newCategory.trim());
     setCategories(prev => [...prev, newCategory.trim()]);
     setNewCategory("");
     setErrorDeleteMessage(null);
+  };
+
+  const categoryHasProducts = async (categoryName: string) => {
+    const products: ProductQuantity[] = await getProductsForUser(userId);
+    return products.some(p => p.category?.toLowerCase() === categoryName.toLowerCase());
   };
 
   const tryDeleteCategory = async (name: string) => {
@@ -52,7 +62,7 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
   const confirmDelete = async () => {
     if (!confirmDeleteCategory) return;
 
-    await deleteCategoryFromFirestore(confirmDeleteCategory);
+    await deleteCategoryForUser(userId, confirmDeleteCategory);
     setCategories(prev => prev.filter(c => c !== confirmDeleteCategory));
     setConfirmDeleteCategory(null);
   };
@@ -60,14 +70,12 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl flex flex-col gap-4">
-
         <h2 className="text-xl font-semibold text-gray-800 text-center">Categorias</h2>
 
         {errorDeleteMessage && (
           <p className="text-red-600 text-center text-sm">{errorDeleteMessage}</p>
         )}
 
-        {/* Responsivo: flex-col em sm e abaixo, flex-row acima */}
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             className="flex-1 border px-3 py-2 rounded-lg w-full"
@@ -128,7 +136,6 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
