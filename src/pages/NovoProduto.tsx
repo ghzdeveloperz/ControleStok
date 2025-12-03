@@ -105,7 +105,6 @@ export const NovoProduto: React.FC = () => {
       const ref = await saveProduct(newProduct);
 
       if (parsedQuantity > 0) {
-        // ⏰ Ajuste para salvar a data no horário de Brasília
         const now = new Date();
         const day = String(now.getDate()).padStart(2, "0");
         const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -148,7 +147,6 @@ export const NovoProduto: React.FC = () => {
         Adicionar Novo Produto
       </h1>
 
-      {/* LAYOUT RESPONSIVO */}
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
 
         {/* IMAGEM */}
@@ -205,12 +203,20 @@ export const NovoProduto: React.FC = () => {
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Categoria</span>
 
-              <div className="flex gap-3 overflow-x-auto no-scrollbar flex-nowrap py-1">
+              <div className="flex flex-wrap gap-3 items-start">
+                {/* BOTÃO + sempre primeiro */}
+                <button
+                  onClick={() => setModalOpen(true)}
+                  className="min-w-12 h-12 rounded-xl border border-gray-300 bg-gray-100 flex items-center justify-center text-xl text-gray-500 hover:bg-gray-200 transition cursor-pointer"
+                >
+                  +
+                </button>
+
                 {categoriasExistentes.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setCategory(cat)}
-                    className={`px-4 py-2 rounded-xl border whitespace-nowrap transition ${
+                    className={`px-4 py-2 rounded-xl border whitespace-nowrap transition cursor-pointer ${
                       category === cat
                         ? "bg-lime-900 text-white border-lime-900"
                         : "bg-gray-100 text-gray-700 border-gray-300"
@@ -219,13 +225,6 @@ export const NovoProduto: React.FC = () => {
                     {cat}
                   </button>
                 ))}
-
-                <button
-                  onClick={() => setModalOpen(true)}
-                  className="min-w-12 h-12 rounded-xl border border-gray-300 bg-gray-100 flex items-center justify-center text-xl text-gray-500 hover:bg-gray-200 transition"
-                >
-                  +
-                </button>
               </div>
             </div>
 
