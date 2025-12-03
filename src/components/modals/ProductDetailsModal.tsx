@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Product } from "../ProductCard";
 import { FaTrash, FaPen } from "react-icons/fa";
+import { Product } from "../ProductCard";
 import { ModalConfirmRemove } from "./ModalConfirmRemove";
 import { getCategories } from "../../firebase/firestore/products";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
-
 
 interface Props {
   product: Product;
@@ -13,30 +12,78 @@ interface Props {
   onRemove: (productId: Product["id"], removeEntire?: boolean) => Promise<void>;
 }
 
-export const ProductDetailsModal: React.FC<Props> = ({ product, onClose, onRemove }) => {
+export const ProductDetailsModal: React.FC<Props> = ({
+  product,
+  onClose,
+  onRemove,
+}) => {
   const [showConfirmRemove, setShowConfirmRemove] = useState(false);
-
   const [categories, setCategories] = useState<string[]>([]);
-  const [editing, setEditing] = useState(false);
-  const [newCategory, setNewCategory] = useState(product.category);
+
+  const [editingName, setEditingName] = useState(false);
+  const [editingUnitPrice, setEditingUnitPrice] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(false);
+  const [editingMinStock, setEditingMinStock] = useState(false);
+
+  const [localName, setLocalName] = useState(product.name ?? "");
+  const [localUnitPrice, setLocalUnitPrice] = useState(
+    Number(product.unitPrice ?? 0)
+  );
+  const [localCategory, setLocalCategory] = useState(product.category);
+  const [localMinStock, setLocalMinStock] = useState(
+    Number(product.minStock ?? 10)
+  );
 
   useEffect(() => {
-    const load = async () => setCategories(await getCategories());
+    const load = async () => {
+      const list = await getCategories();
+      setCategories(list);
+    };
     load();
   }, []);
+
+  useEffect(() => {
+    setLocalName(product.name ?? "");
+    setLocalUnitPrice(Number(product.unitPrice ?? 0));
+    setLocalCategory(product.category);
+    setLocalMinStock(Number(product.minStock ?? 10));
+  }, [product]);
 
   const formatCurrency = (value: number) =>
     value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  const safePrice = Number(product.price);
-  const safeUnitPrice = Number(product.unitPrice);
-  const safeQuantity = Number(product.quantity);
-  const safeName = product.name ?? "Sem nome";
-  const safeCategory = product.category ?? "-";
-  const safeImage = product.image ?? "https://via.placeholder.com/400x300?text=Sem+Imagem";
-  const safeMinStock = Number(product.minStock ?? 0);
+  const safeImage =
+    product.image ?? "https://via.placeholder.com/400x300?text=Sem+Imagem";
 
+  const safePrice = Number(product.price);
+  const safeQuantity = Number(product.quantity);
   const totalCost = safePrice * safeQuantity;
+
+  const handleSaveName = async () => {
+    await updateDoc(doc(db, "quantities", product.id), { name: localName });
+    setEditingName(false);
+  };
+
+  const handleSaveUnitPrice = async () => {
+    await updateDoc(doc(db, "quantities", product.id), {
+      unitPrice: Number(localUnitPrice),
+    });
+    setEditingUnitPrice(false);
+  };
+
+  const handleSaveCategory = async () => {
+    await updateDoc(doc(db, "quantities", product.id), {
+      category: localCategory,
+    });
+    setEditingCategory(false);
+  };
+
+  const handleSaveMinStock = async () => {
+    await updateDoc(doc(db, "quantities", product.id), {
+      minStock: Number(localMinStock || 10),
+    });
+    setEditingMinStock(false);
+  };
 
   const handleConfirmRemove = async () => {
     await onRemove(product.id, true);
@@ -44,24 +91,15 @@ export const ProductDetailsModal: React.FC<Props> = ({ product, onClose, onRemov
     onClose();
   };
 
-  const handleSaveCategory = async () => {
-    if (!newCategory) return;
-
-    const ref = doc(db, "quantities", product.id);
-    await updateDoc(ref, { category: newCategory });
-
-    setEditing(false);
-  };
-
   return (
     <>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
 
-          {/* BOTÃO REMOVER */}
+          {/* REMOVER */}
           <button
             onClick={() => setShowConfirmRemove(true)}
-            className="absolute top-4 right-4 text-red-600 hover:text-red-800 transition cursor-pointer"
+            className="absolute top-4 right-4 text-red-600 hover:text-red-800 cursor-pointer"
             title="Remover produto"
           >
             <FaTrash size={20} />
@@ -73,85 +111,222 @@ export const ProductDetailsModal: React.FC<Props> = ({ product, onClose, onRemov
 
             <img
               src={safeImage}
-              alt={safeName}
+              alt={localName}
               className="w-full h-40 object-cover rounded"
             />
 
-            <p className="text-lg font-semibold">{safeName}</p>
+            {/* NOME */}
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-semibold">
+                {!editingName ? localName : ""}
+              </p>
 
-            <div className="flex flex-col gap-1">
+              {!editingName && (
+                <button
+                  onClick={() => setEditingName(true)}
+                  className="p-1 rounded-full hover:bg-gray-200 cursor-pointer"
+                >
+                  <FaPen size={14} className="text-gray-700" />
+                </button>
+              )}
+            </div>
 
-              {/* LINHA PARA EDITAR CATEGORIA */}
+            {editingName && (
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  className="border p-1 rounded w-full"
+                  value={localName}
+                  onChange={(e) => setLocalName(e.target.value)}
+                />
+
+                <button
+                  onClick={handleSaveName}
+                  className="px-3 py-1 bg-black text-white text-sm rounded cursor-pointer"
+                >
+                  Salvar
+                </button>
+
+                <button
+                  onClick={() => {
+                    setLocalName(product.name ?? "");
+                    setEditingName(false);
+                  }}
+                  className="px-3 py-1 bg-gray-300 text-sm rounded cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
+
+            {/* CATEGORIA */}
+            <div className="flex flex-col gap-2">
+
               <div className="flex items-center gap-2">
-
                 <p className="text-sm">
-                  <strong>Categoria:</strong> {editing ? "" : safeCategory}
+                  <strong>Categoria:</strong>{" "}
+                  {!editingCategory ? localCategory : ""}
                 </p>
 
-                {/* BOTÃO DE EDITAR */}
-                {!editing && (
+                {!editingCategory && (
                   <button
-                    onClick={() => setEditing(true)}
+                    onClick={() => setEditingCategory(true)}
                     className="p-1 rounded-full hover:bg-gray-200 cursor-pointer"
-                    title="Editar categoria"
                   >
                     <FaPen size={14} className="text-gray-700" />
                   </button>
                 )}
               </div>
 
-              {/* SELECT PARA ALTERAR A CATEGORIA */}
-              {editing && (
-                <div className="flex gap-2 items-center mt-1">
-
+              {editingCategory && (
+                <div className="flex items-center gap-2">
                   <select
-                    className="border p-1 rounded"
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
+                    className="border p-1 rounded cursor-pointer"
+                    value={localCategory}
+                    onChange={(e) => setLocalCategory(e.target.value)}
                   >
                     {categories.map((c) => (
-                      <option key={c} value={c}>{c}</option>
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
                     ))}
                   </select>
 
-                  {/* BOTÃO SALVAR */}
                   <button
                     onClick={handleSaveCategory}
-                    className="px-2 py-1 bg-black text-white rounded text-sm cursor-pointer"
+                    className="px-3 py-1 bg-black text-white text-sm rounded cursor-pointer"
                   >
                     Salvar
                   </button>
 
-                  {/* CANCELAR */}
                   <button
-                    onClick={() => setEditing(false)}
-                    className="px-2 py-1 bg-gray-300 rounded text-sm cursor-pointer"
+                    onClick={() => {
+                      setLocalCategory(product.category);
+                      setEditingCategory(false);
+                    }}
+                    className="px-3 py-1 bg-gray-300 text-sm rounded cursor-pointer"
                   >
-                    X
+                    Cancelar
                   </button>
-
                 </div>
               )}
 
-              <p className="text-sm"><strong>Preço unitário:</strong> {formatCurrency(safeUnitPrice)}</p>
-              <p className="text-sm"><strong>Custo médio:</strong> {formatCurrency(safePrice)}</p>
-              <p className="text-sm"><strong>Quantidade em estoque:</strong> {safeQuantity}</p>
-              <p className="text-sm"><strong>Estoque mínimo:</strong> {safeMinStock}</p>
+              {/* PREÇO UNITÁRIO */}
+              <div className="flex items-center gap-2">
+                <p className="text-sm">
+                  <strong>Preço unitário:</strong>{" "}
+                  {!editingUnitPrice ? formatCurrency(localUnitPrice) : ""}
+                </p>
+
+                {!editingUnitPrice && (
+                  <button
+                    onClick={() => setEditingUnitPrice(true)}
+                    className="p-1 rounded-full hover:bg-gray-200 cursor-pointer"
+                  >
+                    <FaPen size={14} className="text-gray-700" />
+                  </button>
+                )}
+              </div>
+
+              {editingUnitPrice && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    className="border p-1 w-24 rounded"
+                    value={localUnitPrice}
+                    onChange={(e) =>
+                      setLocalUnitPrice(Number(e.target.value))
+                    }
+                  />
+
+                  <button
+                    onClick={handleSaveUnitPrice}
+                    className="px-3 py-1 bg-black text-white text-sm rounded cursor-pointer"
+                  >
+                    Salvar
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setLocalUnitPrice(product.unitPrice ?? 0);
+                      setEditingUnitPrice(false);
+                    }}
+                    className="px-3 py-1 bg-gray-300 text-sm rounded cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
+
+              {/* CUSTO MÉDIO */}
+              <p className="text-sm">
+                <strong>Custo médio:</strong> {formatCurrency(safePrice)}
+              </p>
+
+              {/* QUANTIDADE */}
+              <p className="text-sm">
+                <strong>Quantidade em estoque:</strong> {safeQuantity}
+              </p>
+
+              {/* ESTOQUE MÍNIMO */}
+              <div className="flex items-center gap-2">
+                <p className="text-sm">
+                  <strong>Estoque mínimo:</strong>{" "}
+                  {!editingMinStock ? localMinStock : ""}
+                </p>
+
+                {!editingMinStock && (
+                  <button
+                    onClick={() => setEditingMinStock(true)}
+                    className="p-1 rounded-full hover:bg-gray-200 cursor-pointer"
+                  >
+                    <FaPen size={14} className="text-gray-700" />
+                  </button>
+                )}
+              </div>
+
+              {editingMinStock && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    className="border p-1 w-24 rounded"
+                    value={localMinStock}
+                    onChange={(e) =>
+                      setLocalMinStock(Number(e.target.value))
+                    }
+                  />
+
+                  <button
+                    onClick={handleSaveMinStock}
+                    className="px-3 py-1 bg-black text-white text-sm rounded cursor-pointer"
+                  >
+                    Salvar
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setLocalMinStock(product.minStock ?? 10);
+                      setEditingMinStock(false);
+                    }}
+                    className="px-3 py-1 bg-gray-300 text-sm rounded cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
 
               <hr />
 
-              <p className="text-sm font-semibold text-gray-800">
+              <p className="text-sm font-semibold text-gray-700">
                 Custo total em estoque:{" "}
                 <span className="text-black">{formatCurrency(totalCost)}</span>
               </p>
-
             </div>
           </div>
 
-          <div className="mt-4 flex justify-end">
+          <div className="mt-5 flex justify-end">
             <button
               onClick={onClose}
-              className="cursor-pointer px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition"
+              className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 cursor-pointer"
             >
               Fechar
             </button>

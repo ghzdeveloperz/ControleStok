@@ -9,7 +9,6 @@ import { AlertBanner } from "../components/AlertBanner";
 import {
   saveProduct,
   ProductQuantity,
-  addProductToStock,
   getCategories,
   saveCategory,
   onCategoriesUpdate,
@@ -23,6 +22,7 @@ export const NovoProduto: React.FC = () => {
   const [category, setCategory] = useState("");
   const [quantity, setQuantity] = useState<number | "">("");
   const [price, setPrice] = useState<string>("");
+  const [minStock, setMinStock] = useState<number | "">("");
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -91,28 +91,19 @@ export const NovoProduto: React.FC = () => {
       return;
     }
 
+    // 🚀 PRODUTO JÁ NASCE COM A QUANTIDADE FINAL  
     const newProduct: Omit<ProductQuantity, "id"> = {
       name: finalName,
       category: finalCategory,
-      quantity: 0,
+      quantity: parsedQuantity,
       cost: parsedPrice,
       unitPrice: parsedPrice,
       image: preview ? String(preview) : null,
-      minStock: 0,
+      minStock: Number(minStock || 10),
     };
 
     try {
-      const ref = await saveProduct(newProduct);
-
-      if (parsedQuantity > 0) {
-        const now = new Date();
-        const day = String(now.getDate()).padStart(2, "0");
-        const month = String(now.getMonth() + 1).padStart(2, "0");
-        const year = now.getFullYear();
-        const dateStr = `${year}-${month}-${day}`;
-
-        await addProductToStock(ref.id, newProduct.name, parsedQuantity, parsedPrice, parsedPrice, dateStr);
-      }
+      await saveProduct(newProduct);
 
       setAlert({ message: "Produto adicionado!", type: "success" });
       navigate("/estoque");
@@ -183,11 +174,11 @@ export const NovoProduto: React.FC = () => {
           )}
         </div>
 
-        {/* FORMULÁRIO */}
+        {/* FORM */}
         <div className="w-full lg:w-1/2 bg-white shadow-sm rounded-2xl p-4 sm:p-6 border border-gray-200">
           <div className="flex flex-col gap-6">
-
-            {/* NOME */}
+            
+            {/* Nome */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Nome do produto</span>
               <input
@@ -199,12 +190,11 @@ export const NovoProduto: React.FC = () => {
               />
             </div>
 
-            {/* CATEGORIAS */}
+            {/* Categorias */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Categoria</span>
 
               <div className="flex flex-wrap gap-3 items-start">
-                {/* BOTÃO + sempre primeiro */}
                 <button
                   onClick={() => setModalOpen(true)}
                   className="min-w-12 h-12 rounded-xl border border-gray-300 bg-gray-100 flex items-center justify-center text-xl text-gray-500 hover:bg-gray-200 transition cursor-pointer"
@@ -228,7 +218,7 @@ export const NovoProduto: React.FC = () => {
               </div>
             </div>
 
-            {/* QUANTIDADE */}
+            {/* Quantidade */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Quantidade inicial</span>
               <input
@@ -243,7 +233,7 @@ export const NovoProduto: React.FC = () => {
               />
             </div>
 
-            {/* PREÇO */}
+            {/* Preço */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Preço (R$)</span>
               <input
@@ -255,7 +245,7 @@ export const NovoProduto: React.FC = () => {
               />
             </div>
 
-            {/* BOTÃO */}
+            {/* Botão */}
             <div className="flex justify-end pt-2 sm:pt-4">
               <button
                 onClick={handleSave}
@@ -265,6 +255,7 @@ export const NovoProduto: React.FC = () => {
                 {loading ? "Salvando..." : "Adicionar Produto"}
               </button>
             </div>
+
           </div>
         </div>
       </div>

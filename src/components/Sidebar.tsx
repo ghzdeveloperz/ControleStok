@@ -14,8 +14,9 @@ interface SidebarProps {
   logoSrc?: string;
   profileSrc?: string;
   userId?: string;
-  lowStockCount?: number;
-  zeroStockCount?: number;
+  lowStockCount?: number | null;
+  zeroStockCount?: number | null;
+  loading?: boolean;
   width: number;
   setWidth: (newWidth: number) => void;
 }
@@ -26,6 +27,7 @@ export function Sidebar({
   userId,
   lowStockCount = 0,
   zeroStockCount = 0,
+  loading = false,
   width,
   setWidth,
 }: SidebarProps) {
@@ -56,6 +58,14 @@ export function Sidebar({
     window.addEventListener("resize", applyPadding);
     return () => window.removeEventListener("resize", applyPadding);
   }, []);
+
+  // Garantir que nunca entre null
+  const safeLowStock = typeof lowStockCount === "number" ? lowStockCount : 0;
+  const safeZeroStock = typeof zeroStockCount === "number" ? zeroStockCount : 0;
+
+  const SkeletonBadge = () => (
+    <span className="w-6 h-4 bg-gray-300 rounded-full animate-pulse"></span>
+  );
 
   return (
     <>
@@ -103,6 +113,7 @@ export function Sidebar({
             onClick={() => navigate("/estoque/novoproduto")}
             indent
           />
+
           <SidebarItem
             collapsed={collapsed}
             icon={FaChartBar}
@@ -111,6 +122,7 @@ export function Sidebar({
             width={width}
             onClick={() => navigate("/relatorios")}
           />
+
           <SidebarItem
             collapsed={collapsed}
             icon={FaExclamationTriangle}
@@ -121,33 +133,52 @@ export function Sidebar({
             badgeRight={
               collapsed ? (
                 <div className="absolute -top-1 -right-1 flex flex-col gap-0.5">
-                  {lowStockCount > 0 && (
-                    <span className="bg-orange-500 text-white text-[10px] font-bold px-1 py-0.5 rounded-full">
-                      {lowStockCount}
-                    </span>
-                  )}
-                  {zeroStockCount > 0 && (
-                    <span className="bg-red-600 text-white text-[10px] font-bold px-1 py-0.5 rounded-full">
-                      {zeroStockCount}
-                    </span>
+                  {loading ? (
+                    <>
+                      <SkeletonBadge />
+                      <SkeletonBadge />
+                    </>
+                  ) : (
+                    <>
+                      {safeLowStock > 0 && (
+                        <span className="bg-orange-500 text-white text-[10px] font-bold px-1 py-0.5 rounded-full">
+                          {safeLowStock}
+                        </span>
+                      )}
+                      {safeZeroStock > 0 && (
+                        <span className="bg-red-600 text-white text-[10px] font-bold px-1 py-0.5 rounded-full">
+                          {safeZeroStock}
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
               ) : (
                 <div className="flex gap-1 ml-auto pr-2">
-                  {lowStockCount > 0 && (
-                    <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                      {lowStockCount}
-                    </span>
-                  )}
-                  {zeroStockCount > 0 && (
-                    <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                      {zeroStockCount}
-                    </span>
+                  {loading ? (
+                    <>
+                      <SkeletonBadge />
+                      <SkeletonBadge />
+                    </>
+                  ) : (
+                    <>
+                      {safeLowStock > 0 && (
+                        <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                          {safeLowStock}
+                        </span>
+                      )}
+                      {safeZeroStock > 0 && (
+                        <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                          {safeZeroStock}
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
               )
             }
           />
+
           <SidebarItem
             collapsed={collapsed}
             icon={FaCog}
@@ -173,6 +204,7 @@ export function Sidebar({
                 alt="Foto"
               />
             </div>
+
             {!collapsed && (
               <span
                 className="text-white font-semibold text-sm truncate"
@@ -242,13 +274,20 @@ function SidebarItem({
       className={`flex items-center 
         ${collapsed ? "justify-center" : "justify-start"}
         gap-3 px-4 py-3 cursor-pointer transition-colors duration-300
-        ${active ? "bg-black text-white rounded-lg mx-2" : "hover:bg-gray-200 text-gray-700 rounded-lg mx-2"}
+        ${
+          active
+            ? "bg-black text-white rounded-lg mx-2"
+            : "hover:bg-gray-200 text-gray-700 rounded-lg mx-2"
+        }
         relative`}
       style={{ marginLeft }}
     >
       <Icon size={22} color={active ? "#ffffff" : "#1f1f1f"} />
       {!collapsed && (
-        <span className="whitespace-nowrap overflow-hidden overflow-ellipsis" style={{ width: width - 80 }}>
+        <span
+          className="whitespace-nowrap overflow-hidden overflow-ellipsis"
+          style={{ width: width - 80 }}
+        >
           {label}
         </span>
       )}

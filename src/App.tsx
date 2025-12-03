@@ -9,7 +9,13 @@ import { NovoProduto } from "./pages/NovoProduto";
 import { Alertas } from "./pages/Alertas";
 import { LoadingProvider } from "./contexts/LoadingContext";
 import { useProducts } from "./hooks/useProducts";
-import { FaBoxes, FaPlus, FaChartBar, FaExclamationTriangle, FaCog } from "react-icons/fa";
+import {
+  FaBoxes,
+  FaPlus,
+  FaChartBar,
+  FaExclamationTriangle,
+  FaCog,
+} from "react-icons/fa";
 
 export const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -27,24 +33,33 @@ export const AppContent: React.FC = () => {
 
   const [userID] = useState("usuário");
 
-  const { products } = useProducts();
+  // Pegamos os produtos + loading correto
+  const { products, loading } = useProducts();
 
-  const [lowStockCount, setLowStockCount] = useState(0);
-  const [zeroStockCount, setZeroStockCount] = useState(0);
+  const [lowStockCount, setLowStockCount] = useState<number>(0);
+  const [zeroStockCount, setZeroStockCount] = useState<number>(0);
 
+  // Evita o bug: só calcula quando realmente há dados
   useEffect(() => {
+    if (loading) return; // ← impede piscar antes do listener atualizar
+
     let low = 0;
     let zero = 0;
 
     products.forEach((p) => {
-      const qty = p.quantity ?? 0;
-      if (qty === 0) zero++;
-      else if (qty <= 10) low++;
+      const qty = Number(p.quantity ?? 0);
+      const min = Number(p.minStock ?? 10);
+
+      if (qty === 0) {
+        zero++;
+      } else if (qty > 0 && qty <= min) {
+        low++;
+      }
     });
 
     setLowStockCount(low);
     setZeroStockCount(zero);
-  }, [products]);
+  }, [products, loading]);
 
   const handleLogout = () => {
     localStorage.removeItem("profileImage");
@@ -69,24 +84,12 @@ export const AppContent: React.FC = () => {
 
       {/* ÁREA PRINCIPAL */}
       <div
-        className="page-content
-    flex-1
-    bg-gray-50
-    overflow-y-auto
-    overflow-x-auto
-    scroll-smooth
-    min-h-screen
-    ml-0
-    md:ml-[var(--sidebar-w)]
-    transition-all duration-150
-    relative
-  "
+        className="page-content flex-1 bg-gray-50 overflow-y-auto overflow-x-auto scroll-smooth min-h-screen ml-0 md:ml-[var(--sidebar-w)] transition-all duration-150 relative"
         style={{
           ["--sidebar-w" as any]: `${sidebarWidth}px`,
-          paddingBottom: "70px", // garante espaço para o footer móvel
+          paddingBottom: "70px",
         }}
       >
-
         <Routes>
           <Route path="/" element={<Navigate to="/estoque" replace />} />
           <Route path="/estoque" element={<Estoque />} />
@@ -116,27 +119,28 @@ export const AppContent: React.FC = () => {
         </Routes>
 
         {/* FOOTER MÓVEL */}
-        <div
-          className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-300 flex justify-around items-center py-3 md:hidden z-50 shadow-lg rounded-t-2xl"
-        >
+        <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-300 flex justify-around items-center py-3 md:hidden z-50 shadow-lg rounded-t-2xl">
           <MobileItem
             active={window.location.pathname === "/estoque"}
             icon={<FaBoxes size={22} />}
             label="Estoque"
             onClick={() => navigate("/estoque")}
           />
+
           <MobileItem
             active={window.location.pathname === "/estoque/novoproduto"}
             icon={<FaPlus size={22} />}
             label="Novo"
             onClick={() => navigate("/estoque/novoproduto")}
           />
+
           <MobileItem
             active={window.location.pathname === "/relatorios"}
             icon={<FaChartBar size={22} />}
             label="Relatórios"
             onClick={() => navigate("/relatorios")}
           />
+
           <MobileItem
             active={window.location.pathname === "/alertas"}
             icon={<FaExclamationTriangle size={22} />}
@@ -145,6 +149,7 @@ export const AppContent: React.FC = () => {
             low={lowStockCount}
             zero={zeroStockCount}
           />
+
           <MobileItem
             active={window.location.pathname === "/configuracoes"}
             icon={<FaCog size={22} />}
@@ -163,8 +168,8 @@ function MobileItem({
   label,
   active,
   onClick,
-  low,
-  zero,
+  low = 0,
+  zero = 0,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -181,19 +186,22 @@ function MobileItem({
     >
       <div className="relative">
         {icon}
+
+        {/* bolhas */}
         <div className="absolute -top-1 -right-2 flex gap-0.5">
-          {low! > 0 && (
+          {low > 0 && (
             <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
               {low}
             </span>
           )}
-          {zero! > 0 && (
+          {zero > 0 && (
             <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
               {zero}
             </span>
           )}
         </div>
       </div>
+
       <span className={`text-xs mt-1 ${active ? "text-white" : "text-gray-700"}`}>
         {label}
       </span>
