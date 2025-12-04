@@ -131,14 +131,14 @@ export const getProductsForUser = async (
 export const saveProductForUser = async (
   userId: string,
   product: Omit<ProductQuantity, "id">
-) => {
+): Promise<string> => {
   const ref = collection(db, "users", userId, "products");
-
   const { price, ...dataToSave } = product; // não salvar price no banco
 
   const docRef = await addDoc(ref, dataToSave);
-  return { ...product, id: docRef.id };
+  return docRef.id; // ✅ retorna apenas o ID
 };
+
 
 // ------------------------------------------------------
 // REMOVER PRODUTO + MOVIMENTOS

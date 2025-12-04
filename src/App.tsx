@@ -36,21 +36,21 @@ export const App: React.FC = () => {
 
   return (
     <LoadingProvider>
-  <Routes>
-    {!isLoggedIn && (
-      <>
-        <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </>
-    )}
+      <Routes>
+        {!isLoggedIn && (
+          <>
+            <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </>
+        )}
 
-    {isLoggedIn && (
-      <>
-        <Route path="/*" element={<AppContent onLogout={handleLogout} loggedUser={loggedUser} />} />
-      </>
-    )}
-  </Routes>
-</LoadingProvider>
+        {isLoggedIn && (
+          <>
+            <Route path="/*" element={<AppContent onLogout={handleLogout} loggedUser={loggedUser} />} />
+          </>
+        )}
+      </Routes>
+    </LoadingProvider>
 
   );
 };
@@ -104,11 +104,12 @@ export const AppContent: React.FC<{ onLogout: () => void; loggedUser: string }> 
         zeroStockCount={zeroStockCount}
       />
 
+
       <div
-        className="page-content flex-1 bg-gray-50 overflow-y-auto overflow-x-auto scroll-smooth min-h-screen ml-0 md:ml-(--sidebar-w)
- transition-all duration-150 relative"
-        style={{ ["--sidebar-w" as any]: `${sidebarWidth}px`, paddingBottom: "70px" }}
+        className="page-content flex-1 bg-gray-50 scroll-smooth min-h-screen md:ml-(--sidebar-w) transition-all duration-150 relative"
+        style={{ ["--sidebar-w" as any]: `${sidebarWidth}px` }}
       >
+
         <Routes>
           <Route path="/" element={<Navigate to="/estoque" replace />} />
           <Route path="/estoque" element={<Estoque userId={userID} />} />
@@ -167,9 +168,8 @@ function MobileItem({
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center px-3 py-1.5 rounded-xl transition-all ${
-        active ? "bg-black text-white" : "text-gray-700 hover:bg-gray-200"
-      }`}
+      className={`relative flex flex-col items-center px-3 py-1.5 rounded-xl transition-all ${active ? "bg-black text-white" : "text-gray-700 hover:bg-gray-200"
+        }`}
     >
       <div className="relative">
         {icon}

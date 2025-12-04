@@ -14,13 +14,15 @@ import {
   ProductQuantity,
 } from "../firebase/firestore/products";
 
+// MOVEMENTS
+import { saveMovementForUser } from "../firebase/firestore/movements";
+
 // CATEGORIES
 import {
   getCategoriesForUser,
   saveCategoryForUser,
   onCategoriesUpdateForUser,
 } from "../firebase/firestore/categories";
-
 
 interface NovoProdutoProps {
   userId: string;
@@ -96,35 +98,52 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
     const finalName = capitalize(name);
     const finalCategory = capitalize(category);
 
-    // ✅ Substituindo productExistsForUser
-    const allProducts = await getProductsForUser(userId);
-    const exists = allProducts.some((p) => p.name.toLowerCase() === finalName.toLowerCase());
-
-    if (exists) {
-      setAlert({ message: "Já existe um produto com esse nome!", type: "error" });
-      setLoading(false);
-      return;
-    }
-
-    // Produto já nasce com a quantidade inicial
-    const newProduct: Omit<ProductQuantity, "id"> = {
-      name: finalName,
-      category: finalCategory,
-      quantity: parsedQuantity,
-      cost: parsedPrice,
-      unitPrice: parsedPrice,
-      image: preview ? String(preview) : null,
-      minStock: Number(minStock || 10),
-    };
-
     try {
-      await saveProductForUser(userId, newProduct);
+      // Verifica se já existe produto com mesmo nome
+      const allProducts = await getProductsForUser(userId);
+      const exists = allProducts.some((p) => p.name.toLowerCase() === finalName.toLowerCase());
+      if (exists) {
+        setAlert({ message: "Já existe um produto com esse nome!", type: "error" });
+        setLoading(false);
+        return;
+      }
 
-      setAlert({ message: "Produto adicionado!", type: "success" });
+      // Salva produto no Firestore
+      const newProduct: Omit<ProductQuantity, "id"> = {
+        name: finalName,
+        category: finalCategory,
+        quantity: parsedQuantity,
+        cost: parsedPrice,
+        unitPrice: parsedPrice,
+        image: preview ?? undefined,
+        minStock: Number(minStock || 10),
+      };
+
+      // ✅ salvar produto e pegar ID
+      const productId: string = await saveProductForUser(userId, newProduct);
+
+      // Salva movimentação inicial se a quantidade > 0
+      if (parsedQuantity > 0) {
+        // garante string no formato YYYY-MM-DD
+        const today = new Date();
+        const dateString = today.toISOString().split("T")[0];
+
+        await saveMovementForUser(userId, {
+          productId,
+          productName: finalName,
+          quantity: parsedQuantity,
+          cost: parsedPrice,
+          unitPrice: parsedPrice,
+          type: "add",
+          date: dateString, // string agora
+        });
+      }
+
+      setAlert({ message: "Produto adicionado com sucesso!", type: "success" });
       navigate("/estoque");
     } catch (err) {
       console.error(err);
-      setAlert({ message: "Erro ao salvar!", type: "error" });
+      setAlert({ message: "Erro ao salvar produto!", type: "error" });
     }
 
     setLoading(false);
@@ -208,7 +227,6 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
             {/* Categorias */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Categoria</span>
-
               <div className="flex flex-wrap gap-3 items-start">
                 <button
                   onClick={() => setModalOpen(true)}

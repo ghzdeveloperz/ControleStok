@@ -18,19 +18,22 @@ import { db } from "../firebase/firebase";
 import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
 import { ProductQuantity, useProducts } from "../hooks/useProducts";
 
+// ------------------------------------------------------
+// TIPOS
+// ------------------------------------------------------
 interface StockMovement {
   id: string;
-  userId: string;
-  productId: string | number;
+  productId: string;
   productName: string;
   type: "add" | "remove";
   quantity: number;
-  price: number;
-  date: string;
+  cost: number;      // do movimento
+  unitPrice: number; // do movimento
+  date: string;      // YYYY-MM-DD
 }
 
 interface ProductDayMovement {
-  id: string | number | undefined;
+  id: string;
   name: string;
   image?: string;
   add: number;
@@ -46,6 +49,9 @@ interface DailyProductMovements {
   products: ProductDayMovement[];
 }
 
+// ------------------------------------------------------
+// UTILITÁRIOS
+// ------------------------------------------------------
 const daysInMonth = (month: number, year: number) =>
   new Date(year, month, 0).getDate();
 
@@ -82,7 +88,6 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
     const start = new Date(selectedYear, selectedMonth - 1, 1);
     const end = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
 
-    // Ajuste aqui: pegar subcoleção do usuário
     const movRef = collection(db, "users", userId, "movements");
     const q = query(
       movRef,
@@ -134,14 +139,14 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
       .reduce((sum, m) => sum + m.quantity, 0);
     const entradasValue = movements
       .filter((m) => m.type === "add")
-      .reduce((sum, m) => sum + m.quantity * (m.price || 0), 0);
+      .reduce((sum, m) => sum + m.quantity * m.unitPrice, 0);
 
     const saidasQty = movements
       .filter((m) => m.type === "remove")
       .reduce((sum, m) => sum + m.quantity, 0);
     const saidasValue = movements
       .filter((m) => m.type === "remove")
-      .reduce((sum, m) => sum + m.quantity * (m.price || 0), 0);
+      .reduce((sum, m) => sum + m.quantity * m.unitPrice, 0);
 
     return {
       entradasQty,
@@ -189,10 +194,10 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
           const prodDay = productsDayMap[m.productId];
           if (m.type === "add") {
             prodDay.add += m.quantity;
-            prodDay.addValue += m.quantity * (m.price || 0);
+            prodDay.addValue += m.quantity * m.unitPrice;
           } else {
             prodDay.remove += m.quantity;
-            prodDay.removeValue += m.quantity * (m.price || 0);
+            prodDay.removeValue += m.quantity * m.unitPrice;
           }
           prodDay.total = prodDay.add + prodDay.remove;
         });
@@ -314,7 +319,7 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
 
             <div className="overflow-x-auto">
               <div className="min-w-[700px] h-48 md:h-72 flex justify-start">
-                <ResponsiveContainer width="100%" height="100%" className="flex! justify-start!">
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={dailyData}
                     margin={{ top: 5, right: 5, left: -20, bottom: 5 }}
@@ -336,7 +341,7 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
             </div>
           </div>
 
-          {/* LISTAGEM */}
+          {/* LISTAGEM POR PRODUTO */}
           <div className="space-y-8">
             {productMovementsByDay.map(
               (day) =>
@@ -359,7 +364,7 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
 
                         return (
                           <div
-                            key={p.id ?? p.name}
+                            key={p.id}
                             className="bg-white rounded shadow p-4 space-y-3"
                           >
                             <div className="flex items-center justify-between">
