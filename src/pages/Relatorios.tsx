@@ -13,10 +13,11 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 
 import { db } from "../firebase/firebase";
 import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
-import { ProductQuantity, useProducts } from "../hooks/useProducts";
+import { useProducts } from "../hooks/useProducts";
 
 // ------------------------------------------------------
 // TIPOS
@@ -27,9 +28,9 @@ interface StockMovement {
   productName: string;
   type: "add" | "remove";
   quantity: number;
-  cost: number;      // do movimento
-  unitPrice: number; // do movimento
-  date: string;      // YYYY-MM-DD
+  cost: number;
+  unitPrice: number;
+  date: string;
 }
 
 interface ProductDayMovement {
@@ -63,6 +64,7 @@ interface RelatoriosProps {
 }
 
 const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
+  const navigate = useNavigate();
   const now = new Date();
   const [selectedDate, setSelectedDate] = useState<Date>(
     new Date(now.getFullYear(), now.getMonth(), 1)
@@ -237,12 +239,12 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
   };
 
   const reportTitle = format(selectedDate, "LLLL yyyy", { locale: ptBR }).toUpperCase();
-
   const loading = loadingProducts || loadingMovements;
 
+  const hasData = productMovementsByDay.some((d) => d.products.length > 0);
+
   return (
-    <div ref={containerRef} className="p-6 w-full overflow-auto h-full bg-gray-50">
-      {/* animação personalizada */}
+    <div ref={containerRef} className="p-6 w-full overflow-auto min-h-screen bg-gray-50 flex flex-col">
       <style>
         {`
           @keyframes dayBounce {
@@ -262,7 +264,6 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
 
       <div className="flex items-center gap-1 mb-4">
         <label className="text-xs sm:text-sm text-gray-600">Mês:</label>
-
         <DatePicker
           selected={selectedDate}
           onChange={(date: Date | null) => date && setSelectedDate(date)}
@@ -275,6 +276,28 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
 
       {loading ? (
         <div className="text-gray-500">Carregando...</div>
+      ) : !hasData ? (
+        // -------------------------------
+        // TELA VAZIA CENTRALIZADA
+        // -------------------------------
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+          <div className="flex items-center justify-center w-24 h-24 bg-gray-200 text-gray-800 rounded-full mb-4 text-5xl shadow-sm">
+            📊
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">
+            Nenhuma movimentação encontrada
+          </h2>
+          <p className="text-gray-500 mb-6 max-w-md">
+            Parece que ainda não houve movimentações no mês selecionado.
+            Adicione produtos ou registre entradas e saídas para gerar relatórios.
+          </p>
+          <button
+            onClick={() => navigate("/estoque")}
+            className="px-6 py-3 bg-black text-white font-medium rounded-lg shadow hover:bg-gray-900 transition cursor-pointer"
+          >
+            Ir para Estoque
+          </button>
+        </div>
       ) : (
         <>
           {/* RESUMO */}
@@ -316,7 +339,6 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
           {/* GRÁFICO PRINCIPAL */}
           <div className="mb-8 bg-white rounded shadow p-4">
             <h2 className="font-semibold mb-4 text-gray-700">Movimentações Diárias</h2>
-
             <div className="overflow-x-auto">
               <div className="min-w-[700px] h-48 md:h-72 flex justify-start">
                 <ResponsiveContainer width="100%" height="100%">
@@ -357,16 +379,11 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
                     `}
                   >
                     <h2 className="text-lg font-semibold mb-2">{day.dateLabel}</h2>
-
                     <div className="space-y-4">
                       {day.products.map((p) => {
                         const liquido = p.addValue - p.removeValue;
-
                         return (
-                          <div
-                            key={p.id}
-                            className="bg-white rounded shadow p-4 space-y-3"
-                          >
+                          <div key={p.id} className="bg-white rounded shadow p-4 space-y-3">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 {p.image && (
@@ -376,10 +393,8 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
                                     className="w-8 h-8 rounded-full object-cover"
                                   />
                                 )}
-
                                 <span className="font-semibold text-gray-800">{p.name}</span>
                               </div>
-
                               <div className="flex gap-4 text-sm font-semibold">
                                 <span className="text-green-600">{formatBRL(p.addValue)}</span>
                                 <span className="text-red-600">{formatBRL(p.removeValue)}</span>
@@ -392,11 +407,7 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
                                 <BarChart
                                   layout="vertical"
                                   data={[
-                                    {
-                                      name: p.name,
-                                      Entradas: p.add,
-                                      Saidas: p.remove,
-                                    },
+                                    { name: p.name, Entradas: p.add, Saidas: p.remove },
                                   ]}
                                 >
                                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -408,8 +419,18 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
                                       name === "Entradas" ? "Entradas" : "Saídas",
                                     ]}
                                   />
-                                  <Bar dataKey="Entradas" fill="#16A34A" barSize={14} radius={[8, 8, 8, 8]} />
-                                  <Bar dataKey="Saidas" fill="#DC2626" barSize={14} radius={[8, 8, 8, 8]} />
+                                  <Bar
+                                    dataKey="Entradas"
+                                    fill="#16A34A"
+                                    barSize={14}
+                                    radius={[8, 8, 8, 8]}
+                                  />
+                                  <Bar
+                                    dataKey="Saidas"
+                                    fill="#DC2626"
+                                    barSize={14}
+                                    radius={[8, 8, 8, 8]}
+                                  />
                                 </BarChart>
                               </ResponsiveContainer>
                             </div>

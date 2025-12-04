@@ -74,19 +74,19 @@ export default function Estoque({ userId }: EstoqueProps) {
   }, [userId]);
 
   // Padronização dos produtos
-const products: Product[] = rawProducts.map((p) => ({
-  id: p.id,
-  name: p.name ?? "Sem nome",
-  quantity: Number(p.quantity ?? 0),
-  price: Number(p.price ?? 0),
-  unitPrice: Number(p.unitPrice ?? 0),
-  category: p.category ?? "Sem categoria",
-  minStock: Number(p.minStock ?? 0),
-  image: p.image ?? "/images/placeholder.png",
+  const products: Product[] = rawProducts.map((p) => ({
+    id: p.id,
+    name: p.name ?? "Sem nome",
+    quantity: Number(p.quantity ?? 0),
+    price: Number(p.price ?? 0),
+    unitPrice: Number(p.unitPrice ?? 0),
+    category: p.category ?? "Sem categoria",
+    minStock: Number(p.minStock ?? 0),
+    image: p.image ?? "/images/placeholder.png",
 
-  // 🔥 Campo adicional apenas no front-end (não existe no banco)
-  cost: Number(p.price ?? 0),
-}));
+    // 🔥 Campo adicional apenas no front-end (não existe no banco)
+    cost: Number(p.price ?? 0),
+  }));
 
 
 
@@ -239,11 +239,10 @@ const products: Product[] = rawProducts.map((p) => ({
           <button
             key={cat}
             onClick={() => setFilter(cat)}
-            className={`px-4 py-1 rounded cursor-pointer transition ${
-              filter === cat
-                ? "bg-black text-white"
-                : "bg-gray-200 hover:bg-gray-300"
-            }`}
+            className={`px-4 py-1 rounded cursor-pointer transition ${filter === cat
+              ? "bg-black text-white"
+              : "bg-gray-200 hover:bg-gray-300"
+              }`}
           >
             {cat}
           </button>
@@ -251,27 +250,31 @@ const products: Product[] = rawProducts.map((p) => ({
       </div>
 
       {/* Tela vazia */}
-      {filteredProducts.length === 0 && (
-        <div className="w-full flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <div className="text-gray-400 text-7xl mb-4">📦</div>
 
-          <h2 className="text-2xl font-semibold text-gray-700 mb-2">
+      {filteredProducts.length === 0 && (
+        <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-center px-4">
+          {/* Ícone discreto preto e branco */}
+          <div className="flex items-center justify-center w-24 h-24 bg-gray-200 text-gray-800 rounded-full mb-4 text-5xl shadow-sm">
+            📦
+          </div>
+
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">
             Que tal começarmos adicionando um produto?
           </h2>
 
-          <p className="text-gray-500 mb-6 max-w-sm">
-            Parece que seu estoque ainda está vazio. Adicione seu primeiro
-            item para começar.
+          <p className="text-gray-500 mb-6 max-w-md">
+            Parece que seu estoque ainda está vazio. Adicione seu primeiro item para começar.
           </p>
 
           <button
             onClick={() => navigate("/estoque/novoproduto")}
-            className="px-6 py-3 bg-black text-white font-medium rounded-lg cursor-pointer shadow hover:bg-gray-900 transition"
+            className="px-6 py-3 bg-black text-white font-medium rounded-lg shadow hover:bg-gray-900 transition cursor-pointer"
           >
             Adicionar Produto
           </button>
         </div>
       )}
+
 
       {/* Lista de produtos */}
       <ProductCard
