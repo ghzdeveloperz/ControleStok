@@ -5,7 +5,6 @@ import {
   collection,
   getDocs,
   serverTimestamp,
-  updateDoc,
   doc,
   getDoc,
   DocumentData,
@@ -34,29 +33,12 @@ export interface StockMovement {
 // SALVAR MOVIMENTO
 // ------------------------------------------------------
 
+// OBS: NÃO ALTERAMOS MAIS O quantity DO PRODUTO AQUI!
+// A quantidade total será calculada a partir do histórico de movimentos.
 export const saveMovementForUser = async (
   userId: string,
   data: Omit<StockMovement, "id"> & { date: string | Date } // permite string ou Date
 ): Promise<StockMovement> => {
-  const productRef = doc(db, "users", userId, "products", data.productId);
-  const snap = await getDoc(productRef);
-
-  if (!snap.exists()) throw new Error("Produto não encontrado.");
-
-  const prod = snap.data() as DocumentData;
-
-  // calcula nova quantidade
-  const newQuantity =
-    data.type === "add"
-      ? Number(prod.quantity ?? 0) + data.quantity
-      : Number(prod.quantity ?? 0) - data.quantity;
-
-  // atualiza estoque do produto
-  await updateDoc(productRef, {
-    quantity: newQuantity,
-    cost: data.cost,
-    unitPrice: data.unitPrice,
-  });
 
   // garante que a data esteja sempre no formato YYYY-MM-DD
   const dateString =

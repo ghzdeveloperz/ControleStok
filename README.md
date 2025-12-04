@@ -1,3 +1,4 @@
 FUNCIONALIDADES ATUALIZADAS:
 
-- quando não tem nenhum produto, aparece mensagens alertando na tela que tá ok em alerta, que não há movimentações em estoque para aparecer em relatõrios, (preencher tela vazia)
+- quantidade não duplica quando vai pra ProductCard.tsx quando eu adiono novo produto
+- Titulo "Produtos baixos" com a cor referente ao indicativo no Status

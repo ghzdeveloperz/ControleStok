@@ -55,7 +55,7 @@ export const Alertas: React.FC<AlertasProps> = ({ userId }) => {
       {/* Produtos Baixos */}
       {lowProducts.length > 0 && (
         <div className="space-y-4 mb-6">
-          <h2 className="text-lg font-semibold text-white px-3 py-1 rounded bg-yellow-500 inline-block shadow-sm">
+          <h2 className="text-xl font-semibold text-white px-3 py-1 rounded bg-orange-500 inline-block">
             Produtos Baixos
           </h2>
           <ProductCard
