@@ -8,7 +8,7 @@ import { db } from "../../firebase/firebase";
 
 interface Props {
   product: Product;
-  userId: string; // obrigatória para buscar categorias do usuário
+  userId: string;
   onClose: () => void;
   onRemove: (productId: Product["id"], removeEntire?: boolean) => Promise<void>;
 }
@@ -23,29 +23,24 @@ export const ProductDetailsModal: React.FC<Props> = ({
   const [categories, setCategories] = useState<string[]>([]);
 
   const [editingName, setEditingName] = useState(false);
-  const [editingUnitPrice, setEditingUnitPrice] = useState(false);
   const [editingCategory, setEditingCategory] = useState(false);
   const [editingMinStock, setEditingMinStock] = useState(false);
 
   const [localName, setLocalName] = useState(product.name ?? "");
-  const [localUnitPrice, setLocalUnitPrice] = useState(Number(product.unitPrice ?? 0));
   const [localCategory, setLocalCategory] = useState(product.category);
   const [localMinStock, setLocalMinStock] = useState(Number(product.minStock ?? 10));
 
-  // Carregar categorias do usuário
   useEffect(() => {
-    const loadCategories = async () => {
+    const load = async () => {
       if (!userId) return;
       const list = await getCategoriesForUser(userId);
       setCategories(list);
     };
-    loadCategories();
+    load();
   }, [userId]);
 
-  // Atualizar valores locais quando o produto mudar
   useEffect(() => {
     setLocalName(product.name ?? "");
-    setLocalUnitPrice(Number(product.unitPrice ?? 0));
     setLocalCategory(product.category);
     setLocalMinStock(Number(product.minStock ?? 10));
   }, [product]);
@@ -53,28 +48,26 @@ export const ProductDetailsModal: React.FC<Props> = ({
   const formatCurrency = (value: number) =>
     value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  const safeImage = product.image ?? "https://via.placeholder.com/400x300?text=Sem+Imagem";
+  const safeImage =
+    product.image ?? "https://via.placeholder.com/400x300?text=Sem+Imagem";
   const safePrice = Number(product.price);
   const safeQuantity = Number(product.quantity);
   const totalCost = safePrice * safeQuantity;
 
+  const productRef = doc(db, "users", userId, "products", product.id);
+
   const handleSaveName = async () => {
-    await updateDoc(doc(db, "quantities", product.id), { name: localName });
+    await updateDoc(productRef, { name: localName });
     setEditingName(false);
   };
 
-  const handleSaveUnitPrice = async () => {
-    await updateDoc(doc(db, "quantities", product.id), { unitPrice: Number(localUnitPrice) });
-    setEditingUnitPrice(false);
-  };
-
   const handleSaveCategory = async () => {
-    await updateDoc(doc(db, "quantities", product.id), { category: localCategory });
+    await updateDoc(productRef, { category: localCategory });
     setEditingCategory(false);
   };
 
   const handleSaveMinStock = async () => {
-    await updateDoc(doc(db, "quantities", product.id), { minStock: Number(localMinStock || 10) });
+    await updateDoc(productRef, { minStock: Number(localMinStock || 10) });
     setEditingMinStock(false);
   };
 
@@ -88,8 +81,6 @@ export const ProductDetailsModal: React.FC<Props> = ({
     <>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
-
-          {/* Botão Remover */}
           <button
             onClick={() => setShowConfirmRemove(true)}
             className="absolute top-4 right-4 text-red-600 hover:text-red-800 cursor-pointer"
@@ -107,7 +98,7 @@ export const ProductDetailsModal: React.FC<Props> = ({
               className="w-full h-40 object-cover rounded"
             />
 
-            {/* NOME */}
+            {/* Nome */}
             <div className="flex items-center gap-2">
               <p className="text-lg font-semibold">{!editingName ? localName : ""}</p>
               {!editingName && (
@@ -145,7 +136,7 @@ export const ProductDetailsModal: React.FC<Props> = ({
               </div>
             )}
 
-            {/* CATEGORIA */}
+            {/* Categoria */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <p className="text-sm">
@@ -192,57 +183,21 @@ export const ProductDetailsModal: React.FC<Props> = ({
                 </div>
               )}
 
-              {/* PREÇO UNITÁRIO */}
-              <div className="flex items-center gap-2">
-                <p className="text-sm">
-                  <strong>Preço unitário:</strong> {!editingUnitPrice ? formatCurrency(localUnitPrice) : ""}
-                </p>
-                {!editingUnitPrice && (
-                  <button
-                    onClick={() => setEditingUnitPrice(true)}
-                    className="p-1 rounded-full hover:bg-gray-200 cursor-pointer"
-                  >
-                    <FaPen size={14} className="text-gray-700" />
-                  </button>
-                )}
-              </div>
-              {editingUnitPrice && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    className="border p-1 w-24 rounded"
-                    value={localUnitPrice}
-                    onChange={(e) => setLocalUnitPrice(Number(e.target.value))}
-                  />
-                  <button
-                    onClick={handleSaveUnitPrice}
-                    className="px-3 py-1 bg-black text-white text-sm rounded cursor-pointer"
-                  >
-                    Salvar
-                  </button>
-                  <button
-                    onClick={() => {
-                      setLocalUnitPrice(product.unitPrice ?? 0);
-                      setEditingUnitPrice(false);
-                    }}
-                    className="px-3 py-1 bg-gray-300 text-sm rounded cursor-pointer"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              )}
+              {/* Preço unitário (removido edição) */}
+              <p className="text-sm">
+                <strong>Preço unitário:</strong> {formatCurrency(product.unitPrice ?? product.price)}
+              </p>
 
-              {/* CUSTO MÉDIO */}
+
               <p className="text-sm">
                 <strong>Custo médio:</strong> {formatCurrency(safePrice)}
               </p>
 
-              {/* QUANTIDADE */}
               <p className="text-sm">
                 <strong>Quantidade em estoque:</strong> {safeQuantity}
               </p>
 
-              {/* ESTOQUE MÍNIMO */}
+              {/* Estoque mínimo */}
               <div className="flex items-center gap-2">
                 <p className="text-sm">
                   <strong>Estoque mínimo:</strong> {!editingMinStock ? localMinStock : ""}
@@ -256,6 +211,7 @@ export const ProductDetailsModal: React.FC<Props> = ({
                   </button>
                 )}
               </div>
+
               {editingMinStock && (
                 <div className="flex items-center gap-2">
                   <input
