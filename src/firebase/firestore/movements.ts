@@ -27,7 +27,7 @@ export interface StockMovement {
   unitPrice: number;
 
   type: "add" | "remove";
-  date: string;
+  date: string; // sempre no formato YYYY-MM-DD
 }
 
 // ------------------------------------------------------
@@ -36,7 +36,7 @@ export interface StockMovement {
 
 export const saveMovementForUser = async (
   userId: string,
-  data: Omit<StockMovement, "id">
+  data: Omit<StockMovement, "id"> & { date: string | Date } // permite string ou Date
 ): Promise<StockMovement> => {
   const productRef = doc(db, "users", userId, "products", data.productId);
   const snap = await getDoc(productRef);
@@ -45,26 +45,34 @@ export const saveMovementForUser = async (
 
   const prod = snap.data() as DocumentData;
 
+  // calcula nova quantidade
   const newQuantity =
     data.type === "add"
       ? Number(prod.quantity ?? 0) + data.quantity
       : Number(prod.quantity ?? 0) - data.quantity;
 
-  // atualiza estoque
+  // atualiza estoque do produto
   await updateDoc(productRef, {
     quantity: newQuantity,
     cost: data.cost,
     unitPrice: data.unitPrice,
   });
 
+  // garante que a data esteja sempre no formato YYYY-MM-DD
+  const dateString =
+    typeof data.date === "string"
+      ? data.date
+      : (data.date as Date).toISOString().split("T")[0];
+
   // salva movimento
   const movRef = collection(db, "users", userId, "movements");
   const docRef = await addDoc(movRef, {
     ...data,
-    timestamp: serverTimestamp(),
+    date: dateString,
+    timestamp: serverTimestamp(), // para ordenação por tempo se necessário
   });
 
-  return { ...data, id: docRef.id };
+  return { ...data, id: docRef.id, date: dateString };
 };
 
 // ------------------------------------------------------
@@ -88,7 +96,7 @@ export const getAllMovementsForUser = async (
       cost: data.cost,
       unitPrice: data.unitPrice,
       type: data.type,
-      date: data.date,
+      date: data.date, // já no formato YYYY-MM-DD
     };
   });
 };

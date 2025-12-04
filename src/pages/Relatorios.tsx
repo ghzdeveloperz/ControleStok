@@ -73,15 +73,19 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
   const selectedMonth = selectedDate.getMonth() + 1;
   const selectedYear = selectedDate.getFullYear();
 
-  // Fetch movements filtrando por userId e mês/ano
+  // -------------------------------
+  // FETCH MOVEMENTS
+  // -------------------------------
   useEffect(() => {
     setLoadingMovements(true);
+
     const start = new Date(selectedYear, selectedMonth - 1, 1);
     const end = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
 
+    // Ajuste aqui: pegar subcoleção do usuário
+    const movRef = collection(db, "users", userId, "movements");
     const q = query(
-      collection(db, "movements"),
-      where("userId", "==", userId),
+      movRef,
       where("date", ">=", start.toISOString().split("T")[0]),
       where("date", "<=", end.toISOString().split("T")[0]),
       orderBy("date")
@@ -99,6 +103,9 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
     return () => unsubscribe();
   }, [userId, selectedMonth, selectedYear]);
 
+  // -------------------------------
+  // DADOS PARA GRÁFICO DIÁRIO
+  // -------------------------------
   const dailyData = useMemo(() => {
     const days = daysInMonth(selectedMonth, selectedYear);
     const base = Array.from({ length: days }, (_, i) => ({
@@ -118,6 +125,9 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
     return base.map((d) => ({ ...d, dayLabel: String(d.day) }));
   }, [movements, selectedMonth, selectedYear]);
 
+  // -------------------------------
+  // RESUMO MENSAL
+  // -------------------------------
   const monthlySummary = useMemo(() => {
     const entradasQty = movements
       .filter((m) => m.type === "add")
@@ -143,6 +153,9 @@ const Relatorios: React.FC<RelatoriosProps> = ({ userId }) => {
     };
   }, [movements]);
 
+  // -------------------------------
+  // MOVIMENTOS POR PRODUTO POR DIA
+  // -------------------------------
   const productMovementsByDay: DailyProductMovements[] = useMemo(() => {
     const days = daysInMonth(selectedMonth, selectedYear);
     const daily: DailyProductMovements[] = [];
