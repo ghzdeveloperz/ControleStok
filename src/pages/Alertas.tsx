@@ -12,16 +12,22 @@ export const Alertas: React.FC<AlertasProps> = ({ userId }) => {
   const navigate = useNavigate();
   const { products } = useProducts(userId);
 
+  // Mapeia os dados do Firestore para o tipo Product (front-end)
   const mapToProduct = (p: ProductQuantity): Product => ({
     ...p,
+    image: p.image ?? "/images/placeholder.png",
     price: (p as any).cost ?? 0,
     unitPrice: (p as any).unitPrice ?? (p as any).cost ?? 0,
+    cost: p.cost ?? 0, // <--- ESSA LINHA RESOLVE
   });
 
+
+  // Produtos zerados
   const zeroProducts: Product[] = products
     .filter((p) => Number(p.quantity ?? 0) === 0)
     .map(mapToProduct);
 
+  // Produtos baixos
   const lowProducts: Product[] = products
     .filter((p) => {
       const qty = Number(p.quantity ?? 0);
@@ -34,7 +40,7 @@ export const Alertas: React.FC<AlertasProps> = ({ userId }) => {
 
   return (
     <div className="p-6 min-h-screen bg-gray-50 flex flex-col">
-      {/* Título alinhado à esquerda */}
+      {/* Título */}
       <h1 className="text-2xl font-bold mb-6 text-gray-800">Alertas de Estoque</h1>
 
       {/* Produtos Zerados */}
@@ -43,10 +49,11 @@ export const Alertas: React.FC<AlertasProps> = ({ userId }) => {
           <h2 className="text-lg font-semibold text-white px-3 py-1 rounded bg-red-600 inline-block shadow-sm">
             Produtos Zerados
           </h2>
+
           <ProductCard
             products={zeroProducts}
             removeMode={false}
-            onSelect={() => {}}
+            onSelect={() => { }}
             userId={userId}
           />
         </div>
@@ -58,19 +65,19 @@ export const Alertas: React.FC<AlertasProps> = ({ userId }) => {
           <h2 className="text-xl font-semibold text-white px-3 py-1 rounded bg-orange-500 inline-block">
             Produtos Baixos
           </h2>
+
           <ProductCard
             products={lowProducts}
             removeMode={false}
-            onSelect={() => {}}
+            onSelect={() => { }}
             userId={userId}
           />
         </div>
       )}
 
-      {/* Aviso centralizado 100% da tela quando não há alertas */}
+      {/* Nenhum alerta */}
       {!hasAlerts && (
         <div className="flex-1 flex flex-col items-center justify-center text-center">
-          {/* Ícone discreto preto e branco */}
           <div className="flex items-center justify-center w-24 h-24 bg-gray-200 text-gray-800 rounded-full mb-4 text-5xl shadow-sm">
             ✅
           </div>

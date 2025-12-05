@@ -6,18 +6,13 @@ import { ProductCard, Product } from "../components/ProductCard";
 import { ModalAddProduct } from "../components/modals/ModalAddProduct";
 import { ModalRemoveProduct } from "../components/modals/ModalRemoveProduct";
 import { ProductDetailsModal } from "../components/modals/ProductDetailsModal";
-import { ModalManageCategories } from "../components/modals/ModalManageCategories";
 import { AlertBanner } from "../components/AlertBanner";
 
 // products.ts
-import {
-  removeProductForUser,
-} from "../firebase/firestore/products";
+import { removeProductForUser } from "../firebase/firestore/products";
 
 // movements.ts
-import {
-  saveMovementForUser,
-} from "../firebase/firestore/movements";
+import { saveMovementForUser } from "../firebase/firestore/movements";
 
 // categories.ts
 import {
@@ -27,6 +22,10 @@ import {
 
 import { useProducts } from "../hooks/useProducts";
 import { useNavigate } from "react-router-dom";
+
+// Firestore direct updates (usado para atualizar quantity/unitPrice/cost)
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../firebase/firebase";
 
 interface EstoqueProps {
   userId: string;
@@ -47,7 +46,6 @@ export default function Estoque({ userId }: EstoqueProps) {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
-  const [showCategoriesModal, setShowCategoriesModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const [alert, setAlert] = useState<{
@@ -57,42 +55,36 @@ export default function Estoque({ userId }: EstoqueProps) {
 
   const [categories, setCategories] = useState<string[]>([]);
 
-  // Carrega categorias (fetch inicial + realtime)
+  // Carrega categorias (se existir coleção)
   useEffect(() => {
     let unsub: (() => void) | undefined;
 
-    const fetchAndSubscribe = async () => {
+    const fetchCats = async () => {
       try {
         const cats = await getCategoriesForUser(userId);
         setCategories(cats);
       } catch (err) {
         console.error("Erro ao buscar categorias:", err);
-      }
-
-      try {
-        unsub = onCategoriesUpdateForUser(userId, (cats) => {
-          setCategories(cats);
-
-          // se o filtro atual não existir mais, reseta para "Todos"
-          if (filter !== "Todos" && !cats.includes(filter)) {
-            setFilter("Todos");
-          }
-        });
-      } catch (err) {
-        console.error("Erro ao inscrever em categorias:", err);
+        setCategories([]);
       }
     };
 
-    fetchAndSubscribe();
+    fetchCats();
+
+    try {
+      unsub = onCategoriesUpdateForUser(userId, (cats) => {
+        setCategories(cats);
+      });
+    } catch (err) {
+      console.error("Erro ao inscrever em categorias:", err);
+    }
 
     return () => {
       if (typeof unsub === "function") unsub();
     };
-    // Intencional: dependemos de userId e filter so para resetar o filtro se necessário
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // Padronização dos produtos
+  // Padronização dos produtos (normaliza o rawProducts do hook)
   const products: Product[] = rawProducts.map((p) => ({
     id: p.id,
     name: p.name ?? "Sem nome",
@@ -103,14 +95,13 @@ export default function Estoque({ userId }: EstoqueProps) {
     minStock: Number(p.minStock ?? 0),
     image: p.image ?? "/images/placeholder.png",
 
-    // 🔥 Campo adicional apenas no front-end (não existe no banco)
+    // Campo auxiliar apenas no front-end
     cost: Number(p.price ?? 0),
   }));
 
   // Filtro + busca
   const filteredProducts = products.filter((product) => {
-    const matchesCategory =
-      filter === "Todos" || product.category === filter;
+    const matchesCategory = filter === "Todos" || product.category === filter;
     const matchesSearch = product.name
       .toLowerCase()
       .includes(search.toLowerCase());
@@ -124,7 +115,9 @@ export default function Estoque({ userId }: EstoqueProps) {
     setTimeout(() => setAlert(null), 2000);
   };
 
-  // Adicionar quantidade
+  // -----------------------------
+  // ADICIONAR QUANTIDADE
+  // -----------------------------
   const handleAddProduct = async (
     productId: string,
     quantity: number,
@@ -133,7 +126,10 @@ export default function Estoque({ userId }: EstoqueProps) {
     unitPrice?: number
   ) => {
     const product = products.find((p) => p.id === productId);
-    if (!product) return;
+    if (!product) {
+      showTimedAlert("Produto não encontrado.", "error");
+      return;
+    }
 
     try {
       const payload = {
@@ -143,11 +139,26 @@ export default function Estoque({ userId }: EstoqueProps) {
         type: "add" as const,
         date,
         cost,
-        price: unitPrice ?? cost,
         unitPrice: unitPrice ?? cost,
       } as any;
 
+      // 1) salva movimentação
       await saveMovementForUser(userId, payload);
+
+      // 2) atualiza o documento do produto no Firestore (quantidade e preços)
+      const prodRef = doc(db, "users", userId, "products", productId);
+
+      // calculo do novo custo médio aqui se você desejar usar newAvgCost:
+      // como o frontend já calcula newAvgCost em ModalAddProduct, o valor enviado
+      // via 'cost' pode representar o novo custo médio. Aqui eu aplico o valor
+      // recebido (cost) como price/cost/unitPrice conforme lógica do seu app.
+      // Se você quiser calcular pelo histórico, remova esse comportamento.
+      await updateDoc(prodRef, {
+        quantity: product.quantity + quantity,
+        cost: cost,
+        unitPrice: unitPrice ?? cost,
+        price: cost, // alimentar price também (opcional, compatibilidade)
+      } as any);
 
       showTimedAlert("Produto adicionado!", "success");
     } catch (err) {
@@ -156,7 +167,9 @@ export default function Estoque({ userId }: EstoqueProps) {
     }
   };
 
-  // Remover quantidade ou excluir produto
+  // -----------------------------
+  // REMOVER QUANTIDADE OU EXCLUIR
+  // -----------------------------
   const handleRemoveProduct = async (
     productId: string,
     qty?: number,
@@ -164,7 +177,10 @@ export default function Estoque({ userId }: EstoqueProps) {
     exitDate?: string
   ) => {
     const product = products.find((p) => p.id === productId);
-    if (!product) return;
+    if (!product) {
+      showTimedAlert("Produto não encontrado.", "error");
+      return;
+    }
 
     try {
       if (removeEntire) {
@@ -188,12 +204,19 @@ export default function Estoque({ userId }: EstoqueProps) {
           quantity: qty,
           type: "remove" as const,
           date: exitDate ?? getLocalDate(),
-          price: product.unitPrice,
-          cost: product.price,
+          // Use unitPrice como referência do custo da saída
+          cost: product.unitPrice,
           unitPrice: product.unitPrice,
         } as any;
 
+        // 1) salva movimentação
         await saveMovementForUser(userId, payload);
+
+        // 2) atualiza produto no Firestore:
+        const prodRef = doc(db, "users", userId, "products", productId);
+        await updateDoc(prodRef, {
+          quantity: product.quantity - qty,
+        } as any);
 
         showTimedAlert("Quantidade removida!", "error");
       }
@@ -216,9 +239,7 @@ export default function Estoque({ userId }: EstoqueProps) {
 
   return (
     <div className="p-4 sm:p-6 min-h-screen overflow-y-auto">
-      {alert && (
-        <AlertBanner {...alert} onClose={() => setAlert(null)} />
-      )}
+      {alert && <AlertBanner {...alert} onClose={() => setAlert(null)} />}
 
       {/* Header */}
       <div className="flex justify-between items-center mb-4 flex-wrap">
@@ -238,15 +259,6 @@ export default function Estoque({ userId }: EstoqueProps) {
           >
             Remover
           </button>
-
-          {/* botão para gerenciar categorias */}
-          <button
-            onClick={() => setShowCategoriesModal(true)}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded cursor-pointer"
-            title="Gerenciar categorias"
-          >
-            Categorias
-          </button>
         </div>
       </div>
 
@@ -265,10 +277,9 @@ export default function Estoque({ userId }: EstoqueProps) {
           <button
             key={cat}
             onClick={() => setFilter(cat)}
-            className={`px-4 py-1 rounded cursor-pointer transition ${filter === cat
-              ? "bg-black text-white"
-              : "bg-gray-200 hover:bg-gray-300"
-              }`}
+            className={`px-4 py-1 rounded cursor-pointer transition ${
+              filter === cat ? "bg-black text-white" : "bg-gray-200 hover:bg-gray-300"
+            }`}
           >
             {cat}
           </button>
@@ -278,7 +289,6 @@ export default function Estoque({ userId }: EstoqueProps) {
       {/* Tela vazia */}
       {filteredProducts.length === 0 && (
         <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-center px-4">
-          {/* Ícone discreto preto e branco */}
           <div className="flex items-center justify-center w-24 h-24 bg-gray-200 text-gray-800 rounded-full mb-4 text-5xl shadow-sm">
             📦
           </div>
@@ -301,19 +311,11 @@ export default function Estoque({ userId }: EstoqueProps) {
       )}
 
       {/* Lista de produtos */}
-      <ProductCard
-        userId={userId}
-        products={filteredProducts}
-        onSelect={(p) => setSelectedProduct(p)}
-      />
+      <ProductCard userId={userId} products={filteredProducts} onSelect={(p) => setSelectedProduct(p)} />
 
       {/* Modal adicionar */}
       {showAddModal && (
-        <ModalAddProduct
-          products={products}
-          onAdd={handleAddProduct}
-          onClose={() => setShowAddModal(false)}
-        />
+        <ModalAddProduct products={products} onAdd={handleAddProduct} onClose={() => setShowAddModal(false)} />
       )}
 
       {/* Modal remover */}
@@ -339,15 +341,6 @@ export default function Estoque({ userId }: EstoqueProps) {
           }}
         />
       )}
-
-      {/* Modal Gerenciar Categorias */}
-      <ModalManageCategories
-        isOpen={showCategoriesModal}
-        onClose={() => setShowCategoriesModal(false)}
-        categories={categories}
-        setCategories={setCategories}
-        userId={userId}
-      />
     </div>
   );
 }

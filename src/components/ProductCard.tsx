@@ -5,13 +5,22 @@ import {
   removeProductForUser,
 } from "../firebase/firestore/products";
 
-// Tipagem segura no front-end
-export interface Product extends ProductQuantityFromDB {
-  price: number;      // custo médio obrigatório no front
-  unitPrice: number;  // preço unitário obrigatório no front
+// Tipagem usada SOMENTE no front-end
+// Sem extender diretamente o tipo do Firestore (evita erro)
+export interface Product {
+  id: string;
+  name: string;      // antes provavelmente estava string | undefined
+  quantity: number;  // antes provavelmente estava number | undefined
+  price: number;
+  unitPrice: number;
+  category: string;
+  minStock: number;
+  image: string;
+  cost: number | undefined;
 }
 
-// Re-exportando ProductQuantity
+
+// Aceita a tipagem do Firestore para compatibilidade
 export type ProductQuantity = ProductQuantityFromDB;
 
 interface ProductCardProps {
@@ -36,7 +45,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     try {
       await removeProductForUser(userId, id);
 
-      // Atualiza lista local (evita flicker e mantém UI rápida)
       if (setProducts) {
         setProducts((prev) => prev.filter((p) => p.id !== id));
       }
@@ -50,18 +58,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {products.map((product) => {
-        // Normalizações defensivas
-        const safePrice = Number(product.price) || 0;
-        const safeUnitPrice = Number(product.unitPrice) || safePrice;
+
         const safeQuantity = Number(product.quantity) || 0;
         const safeMinStock = Number(product.minStock) || 10;
-        const imageSrc = product.image && product.image.trim() !== ""
-          ? product.image
-          : "/images/placeholder.png";
+
+        // Normalizações seguras (caso Firestore não tenha price ou unitPrice)
+        const safePrice = Number(product.price) || 0;
+
+        const safeUnitPrice =
+          Number(product.unitPrice) ||
+          (safeQuantity > 0 ? safePrice / safeQuantity : safePrice);
 
         const totalPrice = safeUnitPrice * safeQuantity;
 
-        // Status
+        const imageSrc =
+          product.image && product.image.trim() !== ""
+            ? product.image
+            : "/images/placeholder.png";
+
         let status: "OK" | "Baixo" | "Zerado" = "OK";
         if (safeQuantity === 0) status = "Zerado";
         else if (safeQuantity <= safeMinStock) status = "Baixo";
@@ -78,7 +92,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             className="relative bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => onSelect?.(product)}
           >
-            {/* Imagem */}
             <div className="h-36 sm:h-40 md:h-48 w-full overflow-hidden bg-gray-100 relative">
               <img
                 src={imageSrc}
@@ -91,7 +104,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               />
             </div>
 
-            {/* Conteúdo */}
             <div className="p-3 flex flex-col gap-1 sm:p-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm sm:text-base font-semibold text-gray-800">
@@ -132,12 +144,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </p>
             </div>
 
-            {/* Botão de Remover */}
             {removeMode && (
               <div className="absolute top-2 right-2">
                 <button
                   onClick={(e) => {
-                    e.stopPropagation(); // impede acionar onSelect ao clicar em remover
+                    e.stopPropagation();
                     handleRemove(product.id);
                   }}
                   className="px-2 py-1 text-xs sm:text-sm bg-red-600 text-white rounded hover:bg-red-700 transition"

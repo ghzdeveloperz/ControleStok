@@ -1,18 +1,21 @@
 /* src/hooks/useProducts.ts */
+
+"use client";
+
 import { useEffect, useState } from "react";
 import {
   onProductsUpdateForUser,
   ProductQuantity as ProductQuantityFromDB,
 } from "../firebase/firestore/products";
 
-// Tipo final usado no FRONTEND
+// Tipo usado no FRONTEND
 export interface ProductQuantity {
   id: string;
   name: string;
   quantity: number;
 
-  price: number;      // calculado
-  unitPrice: number;  // do banco
+  price: number;      // preço total / custo armazenado
+  unitPrice: number;  // custo unitário
   category: string;
   minStock: number;
   image?: string;
@@ -31,13 +34,25 @@ export const useProducts = (userId: string) => {
 
     setLoading(true);
 
+    // Listener em tempo real 🔥
     const unsubscribe = onProductsUpdateForUser(
       userId,
       (updatedProducts: ProductQuantityFromDB[]) => {
         const normalized: ProductQuantity[] = updatedProducts.map((p) => {
-          // Agora "price" existe no tipo do Firestore (opcional)
-          const price = Number(p.price ?? p.cost ?? p.unitPrice ?? 0);
-          const unitPrice = Number(p.unitPrice ?? p.price ?? p.cost ?? 0);
+          // Normalizações de segurança
+          const price = Number(
+            p.price ??
+              p.cost ??          // caso venha de sistemas antigos
+              p.unitPrice ??     // fallback
+              0
+          );
+
+          const unitPrice = Number(
+            p.unitPrice ??
+              p.price ??         // produtos sem custo unitário explícito
+              p.cost ??          // fallback
+              0
+          );
 
           return {
             id: p.id,
@@ -49,17 +64,21 @@ export const useProducts = (userId: string) => {
 
             category: p.category ?? "Sem categoria",
             minStock: Number(p.minStock ?? 0),
+
+            // Garante imagem padrão se não vier nada
             image: p.image ?? "/images/placeholder.png",
           };
         });
 
         setProducts(normalized);
         setLoading(false);
-      }
+      } 
     );
 
     return () => {
-      if (typeof unsubscribe === "function") unsubscribe();
+      if (typeof unsubscribe === "function") {
+        unsubscribe();
+      }
     };
   }, [userId]);
 
