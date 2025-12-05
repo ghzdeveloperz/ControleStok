@@ -1,20 +1,25 @@
 // src/components/modals/ModalManageCategories.tsx
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { FaTrash } from "react-icons/fa";
+
 import {
   saveCategoryForUser,
   deleteCategoryForUser,
+  onCategoriesUpdateForUser,
 } from "../../firebase/firestore/categories";
 
-import { ProductQuantity, getProductsForUser } from "../../firebase/firestore/products";
-
+import {
+  ProductQuantity,
+  getProductsForUser,
+} from "../../firebase/firestore/products";
 
 interface ModalManageCategoriesProps {
   isOpen: boolean;
   onClose: () => void;
   categories: string[];
   setCategories: React.Dispatch<React.SetStateAction<string[]>>;
-  userId: string; // <-- necessário agora
+  userId: string;
 }
 
 export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
@@ -25,55 +30,99 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
   userId,
 }) => {
   const [newCategory, setNewCategory] = useState("");
-  const [errorDeleteMessage, setErrorDeleteMessage] = useState<string | null>(null);
-  const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
+  const [errorDeleteMessage, setErrorDeleteMessage] = useState<string | null>(
+    null
+  );
+  const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<
+    string | null
+  >(null);
 
-  if (!isOpen) return null;
+  // ----------------------------
+  // 🔥 REALTIME FIRESTORE LISTENER
+  // ----------------------------
+  useEffect(() => {
+    if (!userId) return;
 
+    const unsub = onCategoriesUpdateForUser(userId, (list) => {
+      setCategories(list);
+    });
+
+    return () => unsub();
+  }, [userId, setCategories]);
+
+  // ----------------------------
+  // ADICIONAR
+  // ----------------------------
   const addCategory = async () => {
     if (!newCategory.trim()) return;
 
-    if (categories.some(cat => cat.toLowerCase() === newCategory.trim().toLowerCase())) {
+    if (
+      categories.some(
+        (cat) =>
+          cat.toLowerCase() === newCategory.trim().toLowerCase()
+      )
+    ) {
       setErrorDeleteMessage(`A categoria "${newCategory}" já existe!`);
       return;
     }
 
     await saveCategoryForUser(userId, newCategory.trim());
-    setCategories(prev => [...prev, newCategory.trim()]);
     setNewCategory("");
     setErrorDeleteMessage(null);
   };
 
+  // ----------------------------
+  // VERIFICAR SE TEM PRODUTOS
+  // ----------------------------
   const categoryHasProducts = async (categoryName: string) => {
     const products: ProductQuantity[] = await getProductsForUser(userId);
-    return products.some(p => p.category?.toLowerCase() === categoryName.toLowerCase());
+
+    return products.some(
+      (p) =>
+        p.category?.toLowerCase() === categoryName.toLowerCase()
+    );
   };
 
+  // ----------------------------
+  // TENTAR EXCLUIR
+  // ----------------------------
   const tryDeleteCategory = async (name: string) => {
     setErrorDeleteMessage(null);
+
     const hasProducts = await categoryHasProducts(name);
     if (hasProducts) {
-      setErrorDeleteMessage("Esta categoria não pode ser excluída porque há produtos usando ela.");
+      setErrorDeleteMessage(
+        "Esta categoria não pode ser excluída porque há produtos usando ela."
+      );
       return;
     }
+
     setConfirmDeleteCategory(name);
   };
 
+  // ----------------------------
+  // CONFIRMAR EXCLUSÃO
+  // ----------------------------
   const confirmDelete = async () => {
     if (!confirmDeleteCategory) return;
 
     await deleteCategoryForUser(userId, confirmDeleteCategory);
-    setCategories(prev => prev.filter(c => c !== confirmDeleteCategory));
     setConfirmDeleteCategory(null);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-xl flex flex-col gap-4">
-        <h2 className="text-xl font-semibold text-gray-800 text-center">Categorias</h2>
+        <h2 className="text-xl font-semibold text-gray-800 text-center">
+          Categorias
+        </h2>
 
         {errorDeleteMessage && (
-          <p className="text-red-600 text-center text-sm">{errorDeleteMessage}</p>
+          <p className="text-red-600 text-center text-sm">
+            {errorDeleteMessage}
+          </p>
         )}
 
         <div className="flex flex-col sm:flex-row gap-2">
@@ -93,7 +142,10 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
 
         <div className="max-h-60 overflow-y-auto mt-2">
           {categories.map((cat) => (
-            <div key={cat} className="flex items-center justify-between p-2 border-b">
+            <div
+              key={cat}
+              className="flex items-center justify-between p-2 border-b"
+            >
               <span>{cat}</span>
               <button
                 onClick={() => tryDeleteCategory(cat)}
@@ -115,10 +167,14 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
         {confirmDeleteCategory && (
           <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4">
             <div className="bg-white rounded-xl p-6 w-full max-w-xs flex flex-col gap-4 shadow-lg">
-              <h2 className="text-lg font-semibold text-center">Excluir categoria?</h2>
+              <h2 className="text-lg font-semibold text-center">
+                Excluir categoria?
+              </h2>
               <p className="text-center text-gray-700">
-                Tem certeza que deseja excluir <strong>{confirmDeleteCategory}</strong>?
+                Tem certeza que deseja excluir{" "}
+                <strong>{confirmDeleteCategory}</strong>?
               </p>
+
               <div className="flex flex-col sm:flex-row gap-3 mt-3">
                 <button
                   className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300 cursor-pointer"
@@ -126,6 +182,7 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
                 >
                   Cancelar
                 </button>
+
                 <button
                   className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 cursor-pointer"
                   onClick={confirmDelete}

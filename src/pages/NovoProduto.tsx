@@ -1,6 +1,7 @@
 // src/pages/NovoProduto.tsx
 "use client";
 
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaPlus } from "react-icons/fa";
@@ -42,6 +43,7 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
   const [alert, setAlert] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [categoriasExistentes, setCategoriasExistentes] = useState<string[]>([]);
+
   const [modalOpen, setModalOpen] = useState(false);
 
   // Carrega categorias do usuário

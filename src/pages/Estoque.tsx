@@ -6,6 +6,7 @@ import { ProductCard, Product } from "../components/ProductCard";
 import { ModalAddProduct } from "../components/modals/ModalAddProduct";
 import { ModalRemoveProduct } from "../components/modals/ModalRemoveProduct";
 import { ProductDetailsModal } from "../components/modals/ProductDetailsModal";
+import { ModalManageCategories } from "../components/modals/ModalManageCategories";
 import { AlertBanner } from "../components/AlertBanner";
 
 // products.ts
@@ -23,8 +24,6 @@ import {
   getCategoriesForUser,
   onCategoriesUpdateForUser,
 } from "../firebase/firestore/categories";
-
-
 
 import { useProducts } from "../hooks/useProducts";
 import { useNavigate } from "react-router-dom";
@@ -48,6 +47,7 @@ export default function Estoque({ userId }: EstoqueProps) {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [showCategoriesModal, setShowCategoriesModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const [alert, setAlert] = useState<{
@@ -57,20 +57,39 @@ export default function Estoque({ userId }: EstoqueProps) {
 
   const [categories, setCategories] = useState<string[]>([]);
 
-  // Carrega categorias
+  // Carrega categorias (fetch inicial + realtime)
   useEffect(() => {
-    const fetchCats = async () => {
-      const cats = await getCategoriesForUser(userId);
-      setCategories(cats);
+    let unsub: (() => void) | undefined;
+
+    const fetchAndSubscribe = async () => {
+      try {
+        const cats = await getCategoriesForUser(userId);
+        setCategories(cats);
+      } catch (err) {
+        console.error("Erro ao buscar categorias:", err);
+      }
+
+      try {
+        unsub = onCategoriesUpdateForUser(userId, (cats) => {
+          setCategories(cats);
+
+          // se o filtro atual não existir mais, reseta para "Todos"
+          if (filter !== "Todos" && !cats.includes(filter)) {
+            setFilter("Todos");
+          }
+        });
+      } catch (err) {
+        console.error("Erro ao inscrever em categorias:", err);
+      }
     };
 
-    fetchCats();
+    fetchAndSubscribe();
 
-    const unsub = onCategoriesUpdateForUser(userId, (cats) => {
-      setCategories(cats);
-    });
-
-    return () => unsub();
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+    // Intencional: dependemos de userId e filter so para resetar o filtro se necessário
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   // Padronização dos produtos
@@ -87,8 +106,6 @@ export default function Estoque({ userId }: EstoqueProps) {
     // 🔥 Campo adicional apenas no front-end (não existe no banco)
     cost: Number(p.price ?? 0),
   }));
-
-
 
   // Filtro + busca
   const filteredProducts = products.filter((product) => {
@@ -221,6 +238,15 @@ export default function Estoque({ userId }: EstoqueProps) {
           >
             Remover
           </button>
+
+          {/* botão para gerenciar categorias */}
+          <button
+            onClick={() => setShowCategoriesModal(true)}
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded cursor-pointer"
+            title="Gerenciar categorias"
+          >
+            Categorias
+          </button>
         </div>
       </div>
 
@@ -250,7 +276,6 @@ export default function Estoque({ userId }: EstoqueProps) {
       </div>
 
       {/* Tela vazia */}
-
       {filteredProducts.length === 0 && (
         <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-center px-4">
           {/* Ícone discreto preto e branco */}
@@ -274,7 +299,6 @@ export default function Estoque({ userId }: EstoqueProps) {
           </button>
         </div>
       )}
-
 
       {/* Lista de produtos */}
       <ProductCard
@@ -315,6 +339,15 @@ export default function Estoque({ userId }: EstoqueProps) {
           }}
         />
       )}
+
+      {/* Modal Gerenciar Categorias */}
+      <ModalManageCategories
+        isOpen={showCategoriesModal}
+        onClose={() => setShowCategoriesModal(false)}
+        categories={categories}
+        setCategories={setCategories}
+        userId={userId}
+      />
     </div>
   );
 }

@@ -4,21 +4,21 @@ import React, { useState, useEffect, useRef } from "react";
 import { FaTrash, FaPlus, FaUser, FaTags, FaSignOutAlt } from "react-icons/fa";
 import { onCategoriesUpdateForUser } from "../firebase/firestore/categories";
 import { ModalManageCategories } from "../components/modals/ModalManageCategories";
-import { useNavigate } from "react-router-dom"; // React Router
+import { useNavigate } from "react-router-dom";
 import { ModalLogout } from "../components/modals/ModalLogout";
 
 interface ConfiguracoesProps {
   onLogoChange?: (newLogo: string) => void;
   onProfileChange?: (newProfile: string) => void;
   onLogout?: () => void;
-  userId?: string;
+  userId?: string; // sem fallback
 }
 
 export const Configuracoes: React.FC<ConfiguracoesProps> = ({
   onLogoChange,
   onProfileChange,
   onLogout,
-  userId = "defaultUserId",
+  userId,
 }) => {
   const [logoSrc, setLogoSrc] = useState<string>("/images/jinjin-banner.png");
   const [profileSrc, setProfileSrc] = useState<string>("/images/profile-200.jpg");
@@ -30,10 +30,12 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const profileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const navigate = useNavigate(); // React Router
+  const navigate = useNavigate();
 
-  // Carregar categorias do Firebase
+  // Carregar categorias do Firebase somente quando userId existir
   useEffect(() => {
+    if (!userId) return;
+
     const unsub = onCategoriesUpdateForUser(userId, (cats: string[]) => setCategories(cats));
     return () => unsub();
   }, [userId]);
@@ -47,7 +49,7 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
     if (savedProfile) setProfileSrc(savedProfile);
   }, []);
 
-  // Upload e remoção de logo
+  // Upload de banner
   const handleUploadLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -78,7 +80,7 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
     onLogoChange?.("/images/jinjin-banner.png");
   };
 
-  // Upload e remoção de perfil
+  // Upload de perfil
   const handleUploadProfile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -109,11 +111,11 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
     onProfileChange?.("/images/profile-200.jpg");
   };
 
-  // Logout com redirecionamento para /estoque
+  // Logout com redirecionamento
   const handleLogout = () => {
     onLogout?.();
-    setActiveSection("perfil"); // resetar seção
-    navigate("/estoque"); // redireciona para tela inicial
+    setActiveSection("perfil");
+    navigate("/estoque");
   };
 
   return (
@@ -123,18 +125,22 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
       <div className="flex flex-row sm:flex-col gap-3 mb-4 sm:mb-0">
         <button
           onClick={() => setActiveSection("perfil")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl shadow font-semibold transition cursor-pointer ${activeSection === "perfil" ? "bg-gray-900 text-white" : "bg-white text-gray-800 hover:bg-gray-100"}`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl shadow font-semibold transition cursor-pointer ${
+            activeSection === "perfil" ? "bg-gray-900 text-white" : "bg-white text-gray-800 hover:bg-gray-100"
+          }`}
         >
           <FaUser /> Perfil
         </button>
+
         <button
           onClick={() => setActiveSection("categoria")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl shadow font-semibold transition cursor-pointer ${activeSection === "categoria" ? "bg-gray-900 text-white" : "bg-white text-gray-800 hover:bg-gray-100"}`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl shadow font-semibold transition cursor-pointer ${
+            activeSection === "categoria" ? "bg-gray-900 text-white" : "bg-white text-gray-800 hover:bg-gray-100"
+          }`}
         >
           <FaTags /> Categorias
         </button>
 
-        {/* BOTÃO DE LOGOUT */}
         {onLogout && (
           <button
             onClick={() => setShowLogoutConfirm(true)}
@@ -240,7 +246,8 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
         onClose={() => setShowCategoriesModal(false)}
         categories={categories}
         setCategories={setCategories}
-        userId={userId}
+        userId={userId ?? "defaultUserId"}
+
       />
 
       {/* MODAL DE LOGOUT */}
