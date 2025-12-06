@@ -9,6 +9,8 @@ import {
   FaExclamationTriangle,
 } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
+import { FaBarcode } from "react-icons/fa";
+
 
 interface SidebarProps {
   logoSrc?: string;
@@ -187,14 +189,23 @@ export function Sidebar({
             width={width}
             onClick={() => navigate("/configuracoes")}
           />
+
+          <SidebarItem
+            collapsed={collapsed}
+            icon={FaBarcode}
+            label="Scanner"
+            active={isActive("/scanner")}
+            width={width}
+            onClick={() => navigate("/scanner")}
+          />
+
         </nav>
 
         {/* FOOTER */}
         <div className="absolute bottom-4 left-0 w-full flex justify-center px-2">
           <div
-            className={`relative flex items-center ${
-              collapsed ? "justify-center" : "justify-start"
-            } gap-3 bg-black rounded-full px-3 py-2`}
+            className={`relative flex items-center ${collapsed ? "justify-center" : "justify-start"
+              } gap-3 bg-black rounded-full px-3 py-2`}
             style={{ width: collapsed ? 60 : width - 16 }}
           >
             <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shrink-0">
@@ -274,10 +285,9 @@ function SidebarItem({
       className={`flex items-center 
         ${collapsed ? "justify-center" : "justify-start"}
         gap-3 px-4 py-3 cursor-pointer transition-colors duration-300
-        ${
-          active
-            ? "bg-black text-white rounded-lg mx-2"
-            : "hover:bg-gray-200 text-gray-700 rounded-lg mx-2"
+        ${active
+          ? "bg-black text-white rounded-lg mx-2"
+          : "hover:bg-gray-200 text-gray-700 rounded-lg mx-2"
         }
         relative`}
       style={{ marginLeft }}

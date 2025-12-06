@@ -161,3 +161,45 @@ export const removeProductForUser = async (
 
   await batch.commit();
 };
+
+// ------------------------------------------------------
+// BARCODE SUPPORT (OPCIONAL)
+// ------------------------------------------------------
+
+// procurar produto pelo código de barras
+export const findProductByBarcode = async (
+  userId: string,
+  barcode: string
+): Promise<ProductQuantity | null> => {
+  const ref = collection(db, "users", userId, "products");
+
+  const q = query(ref, where("barcode", "==", barcode));
+  const snap = await getDocs(q);
+
+  if (snap.empty) return null;
+
+  const docSnap = snap.docs[0];
+  const d = docSnap.data() as any;
+
+  return {
+    id: docSnap.id,
+    name: d.name,
+    quantity: Number(d.quantity ?? 0),
+    cost: Number(d.cost ?? 0),
+    unitPrice: Number(d.unitPrice ?? 0),
+    price: Number(d.price ?? d.cost ?? d.unitPrice ?? 0),
+    category: d.category ?? "Sem categoria",
+    image: d.image ?? null,
+    minStock: Number(d.minStock ?? 0),
+  };
+};
+
+// salvar código de barras no produto
+export const saveBarcodeToProduct = async (
+  userId: string,
+  productId: string,
+  barcode: string
+) => {
+  const ref = doc(db, "users", userId, "products", productId);
+  await updateDoc(ref, { barcode });
+};

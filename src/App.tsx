@@ -17,6 +17,8 @@ import {
   FaCog,
 } from "react-icons/fa";
 import { Login } from "./pages/Login";
+import ScannerPage from "./pages/ScannerPage";
+
 
 export const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!localStorage.getItem("loggedInUser"));
@@ -117,6 +119,8 @@ export const AppContent: React.FC<{ onLogout: () => void; loggedUser: string }> 
           <Route path="/estoque/novoproduto" element={<NovoProduto userId={userID} />} />
           <Route path="/relatorios" element={<Relatorios userId={userID} />} />
           <Route path="/alertas" element={<Alertas userId={userID} />} />
+          <Route path="/scanner" element={<ScannerPage />} />
+
 
           <Route
             path="/configuracoes"
