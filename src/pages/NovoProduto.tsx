@@ -1,24 +1,21 @@
-// src/pages/NovoProduto.tsx
 "use client";
-
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaPlus } from "react-icons/fa";
+import { FaPlus, FaCamera } from "react-icons/fa";
+
 import { ModalAddCategory } from "../components/modals/ModalAddCategory";
+import { ModalScanner } from "../components/modals/ModalScanner";
 import { AlertBanner } from "../components/AlertBanner";
 
-// PRODUCTS
 import {
   saveProductForUser,
   getProductsForUser,
   ProductQuantity,
 } from "../firebase/firestore/products";
 
-// MOVEMENTS
 import { saveMovementForUser } from "../firebase/firestore/movements";
 
-// CATEGORIES
 import {
   getCategoriesForUser,
   saveCategoryForUser,
@@ -34,6 +31,7 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
+  const [barcode, setBarcode] = useState("");
   const [quantity, setQuantity] = useState<number | "">("");
   const [price, setPrice] = useState<string>("");
   const [minStock, setMinStock] = useState<number | "">("");
@@ -43,17 +41,17 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
   const [alert, setAlert] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [categoriasExistentes, setCategoriasExistentes] = useState<string[]>([]);
-
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Carrega categorias do usuário
+  const [scannerOpen, setScannerOpen] = useState(false);
+
   useEffect(() => {
     const fetchCats = async () => {
       const cats = await getCategoriesForUser(userId);
       setCategoriasExistentes(cats);
     };
-    fetchCats();
 
+    fetchCats();
     const unsub = onCategoriesUpdateForUser(userId, (cats) => setCategoriasExistentes(cats));
     return () => unsub();
   }, [userId]);
@@ -88,8 +86,11 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
   };
 
   const handleSave = async () => {
-    if (!name || !category || quantity === "" || price === "") {
-      setAlert({ message: "Preencha todos os campos!", type: "error" });
+    if (!name || !category || !barcode || quantity === "" || price === "") {
+      setAlert({
+        message: "Preencha todos os campos, incluindo o código de barras!",
+        type: "error",
+      });
       return;
     }
 
@@ -101,17 +102,30 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
     const finalCategory = capitalize(category);
 
     try {
-      // Verifica se já existe produto com mesmo nome
       const allProducts = await getProductsForUser(userId);
-      const exists = allProducts.some((p) => p.name.toLowerCase() === finalName.toLowerCase());
+
+      const exists = allProducts.some(
+        (p) => p.name.toLowerCase() === finalName.toLowerCase()
+      );
       if (exists) {
         setAlert({ message: "Já existe um produto com esse nome!", type: "error" });
         setLoading(false);
         return;
       }
 
-      // Salva produto no Firestore
-      const newProduct: Omit<ProductQuantity, "id"> = {
+      const barcodeExists = allProducts.some(
+        (p: any) => p.barcode && p.barcode === barcode
+      );
+      if (barcodeExists) {
+        setAlert({
+          message: "Já existe um produto com esse código de barras!",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const newProduct: Omit<ProductQuantity, "id"> & { barcode: string } = {
         name: finalName,
         category: finalCategory,
         quantity: parsedQuantity,
@@ -119,14 +133,12 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
         unitPrice: parsedPrice,
         image: preview ?? undefined,
         minStock: Number(minStock || 10),
+        barcode,
       };
 
-      // ✅ salvar produto e pegar ID
       const productId: string = await saveProductForUser(userId, newProduct);
 
-      // Salva movimentação inicial se a quantidade > 0
       if (parsedQuantity > 0) {
-        // garante string no formato YYYY-MM-DD
         const today = new Date();
         const dateString = today.toISOString().split("T")[0];
 
@@ -137,7 +149,7 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
           cost: parsedPrice,
           unitPrice: parsedPrice,
           type: "add",
-          date: dateString, // string agora
+          date: dateString,
         });
       }
 
@@ -162,6 +174,7 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 w-full max-w-4xl mx-auto">
+
       {alert && (
         <AlertBanner
           message={alert.message}
@@ -170,36 +183,21 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
         />
       )}
 
-      <h1 className="text-2xl sm:text-3xl font-semibold mb-6 sm:mb-8 text-center sm:text-left">
-        Adicionar Novo Produto
-      </h1>
+      <h1 className="text-2xl sm:text-3xl font-semibold mb-6">Adicionar Novo Produto</h1>
 
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
 
-        {/* IMAGEM */}
-        <div className="w-full lg:w-1/2 flex flex-col items-center bg-white shadow-sm rounded-2xl p-4 sm:p-6 border border-gray-200">
+        <div className="w-full lg:w-1/2 flex flex-col items-center bg-white shadow-sm rounded-2xl p-4 border border-gray-200">
           {preview ? (
             <img
               src={preview}
               alt="Prévia"
-              className="w-full max-w-xs sm:max-w-sm h-52 sm:h-64 object-cover rounded-xl shadow-md"
+              className="w-full max-w-xs h-52 object-cover rounded-xl shadow-md"
             />
           ) : (
-            <label className="w-full max-w-xs sm:max-w-sm h-52 sm:h-64 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 hover:border-lime-600 hover:bg-gray-100 cursor-pointer transition">
-              <FaPlus className="text-gray-400 text-4xl sm:text-5xl mb-2" />
-              <span className="text-gray-500 text-xs sm:text-sm font-medium">Selecionar imagem</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
-                className="hidden"
-              />
-            </label>
-          )}
-
-          {preview && (
-            <label className="mt-3 cursor-pointer text-sm text-lime-900 font-semibold hover:underline">
-              Trocar imagem
+            <label className="w-full max-w-xs h-52 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 cursor-pointer">
+              <FaPlus className="text-gray-400 text-4xl mb-2" />
+              <span className="text-gray-500 text-sm">Selecionar imagem</span>
               <input
                 type="file"
                 accept="image/*"
@@ -210,29 +208,55 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
           )}
         </div>
 
-        {/* FORM */}
-        <div className="w-full lg:w-1/2 bg-white shadow-sm rounded-2xl p-4 sm:p-6 border border-gray-200">
+        <div className="w-full lg:w-1/2 bg-white shadow-sm rounded-2xl p-4 border border-gray-200">
           <div className="flex flex-col gap-6">
 
-            {/* Nome */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Nome do produto</span>
               <input
                 type="text"
-                placeholder="Ex: Coca-Cola Lata"
+                placeholder="Ex: Coca-Cola"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="px-3 py-2 sm:px-4 sm:py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black/10 outline-none"
+                className="px-4 py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 outline-none"
               />
             </div>
 
-            {/* Categorias */}
+            <div className="flex flex-col gap-1">
+              <span className="text-sm text-gray-700">Código de barras</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Digite ou escaneie"
+                  value={barcode}
+                  onChange={(e) => setBarcode(e.target.value)}
+                  className="flex-1 px-4 py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 outline-none"
+                />
+
+                <button
+                  onClick={() => setScannerOpen(true)}
+                  className="p-3 bg-lime-900 text-white rounded-xl hover:bg-lime-800"
+                >
+                  <FaCamera />
+                </button>
+              </div>
+            </div>
+
+            <ModalScanner
+              open={scannerOpen}
+              onClose={() => setScannerOpen(false)}
+              onResult={(code) => setBarcode(code)}
+            />
+
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Categoria</span>
-              <div className="flex flex-wrap gap-3 items-start">
+
+              {/* RESPONSIVIDADE AJUSTADA AQUI */}
+              <div className="flex flex-wrap gap-3 items-start max-h-40 overflow-y-auto pr-1 lg:max-h-none lg:overflow-visible">
+
                 <button
                   onClick={() => setModalOpen(true)}
-                  className="min-w-12 h-12 rounded-xl border border-gray-300 bg-gray-100 flex items-center justify-center text-xl text-gray-500 hover:bg-gray-200 transition cursor-pointer"
+                  className="min-w-12 h-12 rounded-xl border border-gray-300 bg-gray-100 flex items-center justify-center text-xl text-gray-500"
                 >
                   +
                 </button>
@@ -241,7 +265,7 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
                   <button
                     key={cat}
                     onClick={() => setCategory(cat)}
-                    className={`px-4 py-2 rounded-xl border whitespace-nowrap transition cursor-pointer ${
+                    className={`px-4 py-2 rounded-xl border whitespace-nowrap ${
                       category === cat
                         ? "bg-lime-900 text-white border-lime-900"
                         : "bg-gray-100 text-gray-700 border-gray-300"
@@ -253,7 +277,6 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
               </div>
             </div>
 
-            {/* Quantidade */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Quantidade inicial</span>
               <input
@@ -264,11 +287,10 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
                 onChange={(e) =>
                   setQuantity(e.target.value === "" ? "" : Number(e.target.value))
                 }
-                className="px-3 py-2 sm:px-4 sm:py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black/10 outline-none"
+                className="px-4 py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 outline-none"
               />
             </div>
 
-            {/* Preço */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Preço (R$)</span>
               <input
@@ -276,20 +298,16 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
                 placeholder="R$ 0,00"
                 value={price}
                 onChange={(e) => setPrice(formatCurrency(e.target.value))}
-                className="px-3 py-2 sm:px-4 sm:py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black/10 outline-none"
+                className="px-4 py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 outline-none"
               />
             </div>
 
-            {/* Botão */}
-            <div className="flex justify-end pt-2 sm:pt-4">
-              <button
-                onClick={handleSave}
-                disabled={loading}
-                className="px-5 py-2 sm:px-6 sm:py-3 rounded-xl bg-lime-900 text-white hover:bg-lime-800 transition"
-              >
-                {loading ? "Salvando..." : "Adicionar Produto"}
-              </button>
-            </div>
+            <button
+              onClick={handleSave}
+              className="px-6 py-3 rounded-xl bg-lime-900 text-white hover:bg-lime-800"
+            >
+              {loading ? "Salvando..." : "Adicionar Produto"}
+            </button>
           </div>
         </div>
       </div>

@@ -14,7 +14,6 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { StockMovement } from "./movements";
 
 // ------------------------------------------------------
 // TIPOS
@@ -34,6 +33,8 @@ export interface ProductQuantity {
 
   image?: string | null;
   minStock: number;
+
+  barcode?: string;
 }
 
 // ------------------------------------------------------
@@ -59,6 +60,7 @@ export const onProductsUpdate = (
         category: d.category ?? "Sem categoria",
         image: d.image ?? null,
         minStock: Number(d.minStock ?? 0),
+        barcode: d.barcode ?? "",
       };
     });
 
@@ -90,6 +92,7 @@ export const onProductsUpdateForUser = (
         category: d.category ?? "Sem categoria",
         image: d.image ?? null,
         minStock: Number(d.minStock ?? 0),
+        barcode: d.barcode ?? "",
       };
     });
 
@@ -120,6 +123,7 @@ export const getProductsForUser = async (
       category: d.category ?? "Sem categoria",
       image: d.image ?? null,
       minStock: Number(d.minStock ?? 0),
+      barcode: d.barcode ?? "",
     };
   });
 };
@@ -133,12 +137,12 @@ export const saveProductForUser = async (
   product: Omit<ProductQuantity, "id">
 ): Promise<string> => {
   const ref = collection(db, "users", userId, "products");
-  const { price, ...dataToSave } = product; // não salvar price no banco
+
+  const { price, ...dataToSave } = product;
 
   const docRef = await addDoc(ref, dataToSave);
-  return docRef.id; // ✅ retorna apenas o ID
+  return docRef.id;
 };
-
 
 // ------------------------------------------------------
 // REMOVER PRODUTO + MOVIMENTOS
@@ -151,22 +155,19 @@ export const removeProductForUser = async (
   const ref = doc(db, "users", userId, "products", productId);
   await deleteDoc(ref);
 
-  // remover movimentos associados
   const movRef = collection(db, "users", userId, "movements");
   const q = query(movRef, where("productId", "==", productId));
   const snap = await getDocs(q);
 
   const batch = writeBatch(db);
   snap.docs.forEach((d) => batch.delete(d.ref));
-
   await batch.commit();
 };
 
 // ------------------------------------------------------
-// BARCODE SUPPORT (OPCIONAL)
+// BARCODE SUPPORT
 // ------------------------------------------------------
 
-// procurar produto pelo código de barras
 export const findProductByBarcode = async (
   userId: string,
   barcode: string
@@ -191,10 +192,10 @@ export const findProductByBarcode = async (
     category: d.category ?? "Sem categoria",
     image: d.image ?? null,
     minStock: Number(d.minStock ?? 0),
+    barcode: d.barcode ?? "",
   };
 };
 
-// salvar código de barras no produto
 export const saveBarcodeToProduct = async (
   userId: string,
   productId: string,
