@@ -1,3 +1,6 @@
+
+// src/components/modals/BarcodeScannerModal.tsx
+
 import { useEffect, useRef } from "react";
 import { BrowserMultiFormatReader, NotFoundException } from "@zxing/library";
 

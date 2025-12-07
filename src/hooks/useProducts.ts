@@ -13,13 +13,14 @@ export interface ProductQuantity {
   id: string;
   name: string;
   quantity: number;
-
-  price: number;      // preço total / custo armazenado
-  unitPrice: number;  // custo unitário
+  price: number;
+  unitPrice: number;
   category: string;
   minStock: number;
   image?: string;
+  barcode?: string;   // 🔥 ADICIONE ISSO
 }
+
 
 export const useProducts = (userId: string) => {
   const [products, setProducts] = useState<ProductQuantity[]>([]);
@@ -42,37 +43,34 @@ export const useProducts = (userId: string) => {
           // Normalizações de segurança
           const price = Number(
             p.price ??
-              p.cost ??          // caso venha de sistemas antigos
-              p.unitPrice ??     // fallback
-              0
+            p.cost ??          // caso venha de sistemas antigos
+            p.unitPrice ??     // fallback
+            0
           );
 
           const unitPrice = Number(
             p.unitPrice ??
-              p.price ??         // produtos sem custo unitário explícito
-              p.cost ??          // fallback
-              0
+            p.price ??         // produtos sem custo unitário explícito
+            p.cost ??          // fallback
+            0
           );
 
           return {
             id: p.id,
             name: p.name ?? "Sem nome",
             quantity: Number(p.quantity ?? 0),
-
             price,
             unitPrice,
-
             category: p.category ?? "Sem categoria",
             minStock: Number(p.minStock ?? 0),
-
-            // Garante imagem padrão se não vier nada
             image: p.image ?? "/images/placeholder.png",
           };
+
         });
 
         setProducts(normalized);
         setLoading(false);
-      } 
+      }
     );
 
     return () => {
