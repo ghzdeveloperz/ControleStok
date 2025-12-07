@@ -190,14 +190,6 @@ export function Sidebar({
             onClick={() => navigate("/configuracoes")}
           />
 
-          <SidebarItem
-            collapsed={collapsed}
-            icon={FaBarcode}
-            label="Scanner"
-            active={isActive("/scanner")}
-            width={width}
-            onClick={() => navigate("/scanner")}
-          />
 
         </nav>
 
