@@ -42,20 +42,24 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
 
   const [categoriasExistentes, setCategoriasExistentes] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-
   const [scannerOpen, setScannerOpen] = useState(false);
 
+  // ------------------------------
+  // FETCH CATEGORIES
+  // ------------------------------
   useEffect(() => {
     const fetchCats = async () => {
       const cats = await getCategoriesForUser(userId);
       setCategoriasExistentes(cats);
     };
-
     fetchCats();
     const unsub = onCategoriesUpdateForUser(userId, (cats) => setCategoriasExistentes(cats));
     return () => unsub();
   }, [userId]);
 
+  // ------------------------------
+  // UTILS
+  // ------------------------------
   const formatCurrency = (value: string) => {
     const clean = value.replace(/\D/g, "");
     const num = Number(clean) / 100;
@@ -71,9 +75,9 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
   const capitalize = (t: string) =>
     t
       ? t
-          .split(" ")
-          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-          .join(" ")
+        .split(" ")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(" ")
       : "";
 
   const handleImageChange = (file: File | null) => {
@@ -85,6 +89,9 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
     } else setPreview(null);
   };
 
+  // ------------------------------
+  // SAVE PRODUCT
+  // ------------------------------
   const handleSave = async () => {
     if (!name || !category || !barcode || quantity === "" || price === "") {
       setAlert({
@@ -113,30 +120,26 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
         return;
       }
 
-      const barcodeExists = allProducts.some(
-        (p: any) => p.barcode && p.barcode === barcode
-      );
+      const barcodeExists = allProducts.some((p) => p.barcode && p.barcode === barcode);
       if (barcodeExists) {
-        setAlert({
-          message: "Já existe um produto com esse código de barras!",
-          type: "error",
-        });
+        setAlert({ message: "Já existe um produto com esse código de barras!", type: "error" });
         setLoading(false);
         return;
       }
 
-      const newProduct: Omit<ProductQuantity, "id"> & { barcode: string } = {
+      const newProduct: Omit<ProductQuantity, "id"> = {
         name: finalName,
         category: finalCategory,
         quantity: parsedQuantity,
         cost: parsedPrice,
         unitPrice: parsedPrice,
+        price: parsedPrice,
         image: preview ?? undefined,
         minStock: Number(minStock || 10),
         barcode,
       };
-
-      const productId: string = await saveProductForUser(userId, newProduct);
+      console.log("Barcode que será salvo:", barcode);
+      const productId = await saveProductForUser(userId, newProduct);
 
       if (parsedQuantity > 0) {
         const today = new Date();
@@ -158,11 +161,14 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
     } catch (err) {
       console.error(err);
       setAlert({ message: "Erro ao salvar produto!", type: "error" });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
+  // ------------------------------
+  // ADD CATEGORY
+  // ------------------------------
   const handleAddCategory = async (name: string) => {
     const formatted = capitalize(name);
     if (!categoriasExistentes.includes(formatted)) {
@@ -172,9 +178,11 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
     setModalOpen(false);
   };
 
+  // ------------------------------
+  // JSX
+  // ------------------------------
   return (
     <div className="p-4 sm:p-6 md:p-8 w-full max-w-4xl mx-auto">
-
       {alert && (
         <AlertBanner
           message={alert.message}
@@ -187,6 +195,7 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
 
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
 
+        {/* IMAGE UPLOAD */}
         <div className="w-full lg:w-1/2 flex flex-col items-center bg-white shadow-sm rounded-2xl p-4 border border-gray-200">
           {preview ? (
             <img
@@ -208,9 +217,11 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
           )}
         </div>
 
+        {/* FORM */}
         <div className="w-full lg:w-1/2 bg-white shadow-sm rounded-2xl p-4 border border-gray-200">
           <div className="flex flex-col gap-6">
 
+            {/* NAME */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Nome do produto</span>
               <input
@@ -222,6 +233,7 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
               />
             </div>
 
+            {/* BARCODE */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Código de barras</span>
               <div className="flex items-center gap-2">
@@ -232,7 +244,6 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
                   onChange={(e) => setBarcode(e.target.value)}
                   className="flex-1 px-4 py-3 bg-gray-100 rounded-xl border border-gray-300 focus:ring-2 outline-none"
                 />
-
                 <button
                   onClick={() => setScannerOpen(true)}
                   className="p-3 bg-lime-900 text-white rounded-xl hover:bg-lime-800"
@@ -248,12 +259,10 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
               onResult={(code) => setBarcode(code)}
             />
 
+            {/* CATEGORY */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Categoria</span>
-
-              {/* RESPONSIVIDADE AJUSTADA AQUI */}
               <div className="flex flex-wrap gap-3 items-start max-h-40 overflow-y-auto pr-1 lg:max-h-none lg:overflow-visible">
-
                 <button
                   onClick={() => setModalOpen(true)}
                   className="min-w-12 h-12 rounded-xl border border-gray-300 bg-gray-100 flex items-center justify-center text-xl text-gray-500"
@@ -265,11 +274,10 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
                   <button
                     key={cat}
                     onClick={() => setCategory(cat)}
-                    className={`px-4 py-2 rounded-xl border whitespace-nowrap ${
-                      category === cat
+                    className={`px-4 py-2 rounded-xl border whitespace-nowrap ${category === cat
                         ? "bg-lime-900 text-white border-lime-900"
                         : "bg-gray-100 text-gray-700 border-gray-300"
-                    }`}
+                      }`}
                   >
                     {cat}
                   </button>
@@ -277,6 +285,7 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
               </div>
             </div>
 
+            {/* QUANTITY */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Quantidade inicial</span>
               <input
@@ -291,6 +300,7 @@ export const NovoProduto: React.FC<NovoProdutoProps> = ({ userId }) => {
               />
             </div>
 
+            {/* PRICE */}
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Preço (R$)</span>
               <input

@@ -1,13 +1,26 @@
 // src/components/modals/ModalRemoveProduct.tsx
 import React, { useState, useEffect } from "react";
-import { Product } from "../ProductCard";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { AlertBanner } from "../../components/AlertBanner";
-import { findProductByBarcode } from "../../firebase/firestore/products";
 import { FaCamera } from "react-icons/fa";
+
+import { AlertBanner } from "../../components/AlertBanner";
 import { ModalScanner } from "../modals/ModalScanner";
+import { findProductByBarcode } from "../../firebase/firestore/products";
 import { auth as firebaseAuth } from "../../firebase/firebase";
+
+export interface Product {
+  id: string;
+  name: string;
+  barcode?: string;
+  category?: string;
+  cost?: number;
+  unitPrice?: number;
+  price?: number;
+  quantity?: number;
+  minStock?: number;
+  image?: string;
+}
 
 interface ModalRemoveProductProps {
   products: Product[];
@@ -15,25 +28,23 @@ interface ModalRemoveProductProps {
   onRemove: (productId: string, quantity: number, date: string) => Promise<void>;
 }
 
-// ------- Normalização para evitar inconsistências ----------
+// ---------------- Normalizações ----------------
 const normalize = (v: any) => String(v ?? "").trim().toLowerCase();
 
-// Normaliza produto
-const normalizeProduct = (p: any): Product => {
-  return {
-    id: p.id,
-    name: p.name ?? "",
-    barcode: String(p.barcode ?? ""),
-    category: p.category ?? "",
-    cost: Number(p.cost ?? 0),
-    unitPrice: Number(p.unitPrice ?? p.cost ?? 0),
-    price: Number(p.price ?? p.unitPrice ?? p.cost ?? 0),
-    quantity: Number(p.quantity ?? 0),
-    minStock: Number(p.minStock ?? 0),
-    image: p.image ?? "",
-  };
-};
+const normalizeProduct = (p: any): Product => ({
+  id: String(p.id),
+  name: p.name ?? "",
+  barcode: String(p.barcode ?? ""),
+  category: p.category ?? "",
+  cost: Number(p.cost ?? 0),
+  unitPrice: Number(p.unitPrice ?? p.cost ?? 0),
+  price: Number(p.price ?? p.unitPrice ?? p.cost ?? 0),
+  quantity: Number(p.quantity ?? 0),
+  minStock: Number(p.minStock ?? 0),
+  image: p.image ?? "",
+});
 
+// ---------------- COMPONENTE ----------------
 export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   products,
   onClose,
@@ -45,77 +56,38 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   );
   const [quantity, setQuantity] = useState<number | "">("");
   const [exitDate, setExitDate] = useState<Date | null>(null);
-
   const [localProducts, setLocalProducts] = useState<Product[]>(() =>
     products.map(normalizeProduct)
   );
   const [loading, setLoading] = useState(false);
-
-  const [alert, setAlert] = useState<{
-    message: string;
-    type: "success" | "error";
-    key: number;
-  } | null>(null);
-
+  const [alert, setAlert] = useState<{ message: string; type: "success" | "error"; key: number } | null>(null);
   const [alertKey, setAlertKey] = useState(0);
   const [scannerOpen, setScannerOpen] = useState(false);
 
-  // --------------------------
-  // FILTRO COMPARANDO CERTINHO
-  // --------------------------
+  // ---------------- FILTRO ----------------
   const filteredProducts = localProducts.filter((p) => {
     const term = normalize(search);
-
-    // Busca pelo nome ou pelo barcode
-    const matchName = normalize(p.name).includes(term);
-    const matchBarcode = normalize(p.barcode).includes(term);
-
-    return matchName || matchBarcode;
+    return normalize(p.name).includes(term) || normalize(p.barcode).includes(term);
   });
 
-
-  // -----------------------------------------
-  // Garantir que o select sempre mostra algo
-  // -----------------------------------------
   useEffect(() => {
     if (filteredProducts.some((p) => String(p.id) === selectedProductId)) return;
-
-    if (filteredProducts.length === 0) {
-      setSelectedProductId("");
-      return;
-    }
-
-    setSelectedProductId(String(filteredProducts[0].id));
+    setSelectedProductId(filteredProducts.length ? String(filteredProducts[0].id) : "");
   }, [search, localProducts]);
 
-
-  // -----------------------------------------
-  // Alertas
-  // -----------------------------------------
+  // ---------------- ALERT ----------------
   const showAlert = (message: string, type: "success" | "error") => {
     setAlert({ message, type, key: alertKey });
     setAlertKey((prev) => prev + 1);
   };
 
-  // -----------------------------------------
-  // Resolve userId
-  // -----------------------------------------
+  // ---------------- RESOLVE USER ID ----------------
   const resolveUserId = (): string => {
-    const tryKeys = [
-      "loggedUser",
-      "loggedInUser",
-      "userId",
-      "loggedUserId",
-      "uid",
-      "user",
-      "currentUserId",
-    ];
-
+    const tryKeys = ["loggedUser", "loggedInUser", "userId", "loggedUserId", "uid", "user", "currentUserId"];
     for (const k of tryKeys) {
       const v = localStorage.getItem(k);
       if (v) return v.trim();
     }
-
     try {
       const raw = localStorage.getItem("user");
       if (raw) {
@@ -123,28 +95,22 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
         if (parsed?.uid) return parsed.uid;
         if (parsed?.id) return parsed.id;
       }
-    } catch { }
-
+    } catch {}
     try {
       const firebaseUid = firebaseAuth?.currentUser?.uid;
       if (firebaseUid) return firebaseUid;
-    } catch { }
-
+    } catch {}
     return "";
   };
 
-  // -----------------------------------------
-  // SCANNER
-  // -----------------------------------------
+  // ---------------- SCANNER ----------------
   const handleDetected = async (barcodeRaw: string) => {
     setScannerOpen(false);
-
     const barcode = String(barcodeRaw ?? "").trim();
     if (!barcode) {
       showAlert("Código inválido.", "error");
       return;
     }
-
     const userId = resolveUserId();
     if (!userId) {
       showAlert("Usuário não encontrado. Faça login novamente.", "error");
@@ -153,22 +119,16 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
 
     try {
       const product = await findProductByBarcode(userId, barcode);
-
       if (!product) {
         showAlert("Código não encontrado.", "error");
         return;
       }
-
       const normalized = normalizeProduct(product);
-
       setSearch(normalized.barcode || "");
       setSelectedProductId(String(normalized.id));
-
-      // Se não existir localmente, adiciona
       if (!localProducts.some((p) => String(p.id) === normalized.id)) {
         setLocalProducts((prev) => [...prev, normalized]);
       }
-
       showAlert(`Produto encontrado: ${normalized.name}`, "success");
     } catch (err) {
       console.error(err);
@@ -176,74 +136,51 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
     }
   };
 
-  // -----------------------------------------
-  // REMOVER PRODUTO
-  // -----------------------------------------
+  // ---------------- REMOVER ----------------
   const handleRemove = async () => {
     if (!selectedProductId || quantity === "") {
       showAlert("Selecione um produto e informe a quantidade.", "error");
       return;
     }
-
     if (!exitDate) {
       showAlert("A data de saída é obrigatória.", "error");
       return;
     }
-
     const product = localProducts.find((p) => String(p.id) === selectedProductId);
     if (!product) return;
 
-    if (Number(quantity) > product.quantity) {
-      showAlert(
-        `Não é possível remover mais que ${product.quantity} unidades.`,
-        "error"
-      );
+    if (Number(quantity) > (product.quantity ?? 0)) {
+      showAlert(`Não é possível remover mais que ${product.quantity} unidades.`, "error");
       return;
     }
 
     setLoading(true);
-
     const dateStr = exitDate.toISOString().split("T")[0];
 
     try {
       await onRemove(selectedProductId, Number(quantity), dateStr);
-
       setQuantity("");
       setExitDate(null);
       setSearch("");
-
-      setSelectedProductId(filteredProducts.length > 0 ? String(filteredProducts[0].id) : "");
-
-
+      setSelectedProductId(filteredProducts.length ? String(filteredProducts[0].id) : "");
       showAlert("Produto removido com sucesso!", "success");
       onClose();
     } catch (err) {
-      showAlert("Erro ao remover produto.", "error");
       console.error(err);
+      showAlert("Erro ao remover produto.", "error");
     } finally {
       setLoading(false);
     }
   };
 
+  // ---------------- JSX ----------------
   return (
     <>
-      <ModalScanner
-        open={scannerOpen}
-        onClose={() => setScannerOpen(false)}
-        onResult={(code) => handleDetected(code)}
-      />
+      <ModalScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onResult={handleDetected} />
 
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
-          {alert && (
-            <AlertBanner
-              key={alert.key}
-              message={alert.message}
-              type={alert.type}
-              onClose={() => setAlert(null)}
-            />
-          )}
-
+          {alert && <AlertBanner key={alert.key} message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
           <h2 className="text-xl font-bold mb-4">Remover Produto</h2>
 
           {/* BUSCAR */}
@@ -255,7 +192,6 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 px-3 py-2 border rounded"
             />
-
             <button
               onClick={() => setScannerOpen(true)}
               className="px-3 py-2 bg-lime-900 hover:bg-lime-800 text-white rounded flex items-center justify-center text-xl"
@@ -270,7 +206,7 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
             onChange={(e) => setSelectedProductId(e.target.value)}
             className="cursor-pointer px-3 py-2 border rounded w-full mb-3"
           >
-            {filteredProducts.length > 0 ? (
+            {filteredProducts.length ? (
               filteredProducts.map((p) => (
                 <option key={p.id} value={String(p.id)}>
                   {p.name} (Em estoque: {p.quantity})
@@ -281,15 +217,12 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
             )}
           </select>
 
-
           {/* QUANTIDADE */}
           <input
             type="number"
             placeholder="Quantidade a remover"
             value={quantity === "" ? "" : String(quantity)}
-            onChange={(e) =>
-              setQuantity(e.target.value === "" ? "" : Number(e.target.value))
-            }
+            onChange={(e) => setQuantity(e.target.value === "" ? "" : Number(e.target.value))}
             className="px-3 py-2 border rounded w-full mb-3"
             min={1}
           />
@@ -311,7 +244,6 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
             >
               Cancelar
             </button>
-
             <button
               onClick={handleRemove}
               disabled={loading}

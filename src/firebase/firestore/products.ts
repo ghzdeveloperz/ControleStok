@@ -1,4 +1,4 @@
-// src/firebase/firestore/products.ts
+/* src/firebase/firestore/products.ts */
 
 import {
   collection,
@@ -40,9 +40,7 @@ export interface ProductQuantity {
 // LISTENER GLOBAL
 // ------------------------------------------------------
 
-export const onProductsUpdate = (
-  callback: (products: ProductQuantity[]) => void
-) => {
+export const onProductsUpdate = (callback: (products: ProductQuantity[]) => void) => {
   const ref = collection(db, "quantities");
 
   return onSnapshot(ref, (snapshot) => {
@@ -137,8 +135,9 @@ export const saveProductForUser = async (
 ): Promise<string> => {
   const ref = collection(db, "users", userId, "products");
 
-  const { price, ...dataToSave } = product;
-  const docRef = await addDoc(ref, dataToSave);
+  // Inclui barcode se não existir
+  const { price, barcode = "", ...dataToSave } = product;
+  const docRef = await addDoc(ref, { ...dataToSave, barcode });
   return docRef.id;
 };
 
@@ -146,10 +145,7 @@ export const saveProductForUser = async (
 // REMOVER PRODUTO + MOVIMENTOS
 // ------------------------------------------------------
 
-export const removeProductForUser = async (
-  userId: string,
-  productId: string
-) => {
+export const removeProductForUser = async (userId: string, productId: string) => {
   const ref = doc(db, "users", userId, "products", productId);
   await deleteDoc(ref);
 
@@ -178,7 +174,7 @@ export const findProductByBarcode = async (
   if (snap.empty) return null;
 
   const docSnap = snap.docs[0];
-  const d = docSnap.data() as any;
+  const d = docSnap.data() as DocumentData;
 
   return {
     id: docSnap.id,
@@ -201,4 +197,26 @@ export const saveBarcodeToProduct = async (
 ) => {
   const ref = doc(db, "users", userId, "products", productId);
   await updateDoc(ref, { barcode });
+};
+
+// ------------------------------------------------------
+// SCRIPT DE ATUALIZAÇÃO DE PRODUTOS ANTIGOS
+// ------------------------------------------------------
+
+export const ensureAllProductsHaveBarcode = async (userId: string) => {
+  const productsRef = collection(db, "users", userId, "products");
+  const snapshot = await getDocs(productsRef);
+
+  const batch = writeBatch(db);
+  snapshot.docs.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!("barcode" in data)) {
+      batch.update(doc(db, "users", userId, "products", docSnap.id), {
+        barcode: "",
+      });
+    }
+  });
+
+  await batch.commit();
+  console.log(`Produtos do usuário ${userId} atualizados com barcode.`);
 };
