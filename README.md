@@ -5,3 +5,4 @@
 
 OBS:
  - ainda não aparece em SELECT o nome do produto, mais aparece um alerta na tela com o nome do produto
+ - tentando adionar código de barras no ProductDetails, ele sai do NovoProduct.tsx, salva no firestore, mais não chega de jeito nenhum em Productdetail

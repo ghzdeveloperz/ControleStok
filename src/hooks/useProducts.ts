@@ -18,9 +18,8 @@ export interface ProductQuantity {
   category: string;
   minStock: number;
   image?: string;
-  barcode?: string;   // 🔥 ADICIONE ISSO
+  barcode: string; // 🔥 GARANTIDO
 }
-
 
 export const useProducts = (userId: string) => {
   const [products, setProducts] = useState<ProductQuantity[]>([]);
@@ -40,32 +39,27 @@ export const useProducts = (userId: string) => {
       userId,
       (updatedProducts: ProductQuantityFromDB[]) => {
         const normalized: ProductQuantity[] = updatedProducts.map((p) => {
-          // Normalizações de segurança
-          const price = Number(
-            p.price ??
-            p.cost ??          // caso venha de sistemas antigos
-            p.unitPrice ??     // fallback
-            0
-          );
-
-          const unitPrice = Number(
-            p.unitPrice ??
-            p.price ??         // produtos sem custo unitário explícito
-            p.cost ??          // fallback
-            0
-          );
+          // Garantir que todos os campos estejam presentes e convertidos corretamente
+          const price = Number(p.price ?? p.cost ?? p.unitPrice ?? 0);
+          const unitPrice = Number(p.unitPrice ?? p.price ?? p.cost ?? 0);
+          const quantity = Number(p.quantity ?? 0);
+          const minStock = Number(p.minStock ?? 10);
+          const name = p.name?.trim() || "Sem nome";
+          const category = p.category?.trim() || "Sem categoria";
+          const image = p.image || "/images/placeholder.png";
+          const barcode = p.barcode?.trim() || ""; // 🔥 GARANTIDO
 
           return {
             id: p.id,
-            name: p.name ?? "Sem nome",
-            quantity: Number(p.quantity ?? 0),
+            name,
+            quantity,
             price,
             unitPrice,
-            category: p.category ?? "Sem categoria",
-            minStock: Number(p.minStock ?? 0),
-            image: p.image ?? "/images/placeholder.png",
+            category,
+            minStock,
+            image,
+            barcode,
           };
-
         });
 
         setProducts(normalized);
