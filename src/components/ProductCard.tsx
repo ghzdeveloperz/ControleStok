@@ -17,6 +17,7 @@ export interface Product {
   minStock: number;
   image: string;
   cost: number | undefined;
+  barcode?: string; // opcional caso alguns produtos não tenham
 }
 
 

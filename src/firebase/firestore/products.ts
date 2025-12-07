@@ -23,7 +23,6 @@ export interface ProductQuantity {
   id: string;
   name: string;
   category: string;
-
   quantity: number;
 
   cost?: number;
@@ -139,7 +138,6 @@ export const saveProductForUser = async (
   const ref = collection(db, "users", userId, "products");
 
   const { price, ...dataToSave } = product;
-
   const docRef = await addDoc(ref, dataToSave);
   return docRef.id;
 };
@@ -165,7 +163,7 @@ export const removeProductForUser = async (
 };
 
 // ------------------------------------------------------
-// BARCODE SUPPORT
+// BARCODE SUPPORT 100% CORRIGIDO
 // ------------------------------------------------------
 
 export const findProductByBarcode = async (

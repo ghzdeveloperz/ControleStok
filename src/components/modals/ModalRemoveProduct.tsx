@@ -1,14 +1,38 @@
+// src/components/modals/ModalRemoveProduct.tsx
 import React, { useState, useEffect } from "react";
 import { Product } from "../ProductCard";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { AlertBanner } from "../../components/AlertBanner";
+import { findProductByBarcode } from "../../firebase/firestore/products";
+import { FaCamera } from "react-icons/fa";
+import { ModalScanner } from "../modals/ModalScanner";
+import { auth as firebaseAuth } from "../../firebase/firebase";
 
 interface ModalRemoveProductProps {
   products: Product[];
   onClose: () => void;
   onRemove: (productId: string, quantity: number, date: string) => Promise<void>;
 }
+
+// ------- Normalização para evitar inconsistências ----------
+const normalize = (v: any) => String(v ?? "").trim().toLowerCase();
+
+// Normaliza produto
+const normalizeProduct = (p: any): Product => {
+  return {
+    id: p.id,
+    name: p.name ?? "",
+    barcode: String(p.barcode ?? ""),
+    category: p.category ?? "",
+    cost: Number(p.cost ?? 0),
+    unitPrice: Number(p.unitPrice ?? p.cost ?? 0),
+    price: Number(p.price ?? p.unitPrice ?? p.cost ?? 0),
+    quantity: Number(p.quantity ?? 0),
+    minStock: Number(p.minStock ?? 0),
+    image: p.image ?? "",
+  };
+};
 
 export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   products,
@@ -17,42 +41,147 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
 }) => {
   const [search, setSearch] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<string>(
-    products.length > 0 ? String(products[0].id) : ""
+    products.length ? String(products[0].id) : ""
   );
   const [quantity, setQuantity] = useState<number | "">("");
   const [exitDate, setExitDate] = useState<Date | null>(null);
+
+  const [localProducts, setLocalProducts] = useState<Product[]>(() =>
+    products.map(normalizeProduct)
+  );
   const [loading, setLoading] = useState(false);
 
-  // Estado do alerta
-  const [alert, setAlert] = useState<{ message: string; type: "success" | "error"; key: number } | null>(null);
-  const [alertKey, setAlertKey] = useState(0); // Para forçar re-render do mesmo alerta
+  const [alert, setAlert] = useState<{
+    message: string;
+    type: "success" | "error";
+    key: number;
+  } | null>(null);
 
-  const filteredProducts = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const [alertKey, setAlertKey] = useState(0);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
+  // --------------------------
+  // FILTRO COMPARANDO CERTINHO
+  // --------------------------
+  const filteredProducts = localProducts.filter((p) => {
+    const term = normalize(search);
+
+    // Busca pelo nome ou pelo barcode
+    const matchName = normalize(p.name).includes(term);
+    const matchBarcode = normalize(p.barcode).includes(term);
+
+    return matchName || matchBarcode;
+  });
+
+
+  // -----------------------------------------
+  // Garantir que o select sempre mostra algo
+  // -----------------------------------------
   useEffect(() => {
-    if (filteredProducts.length > 0) {
-      setSelectedProductId(String(filteredProducts[0].id));
-    } else {
+    if (filteredProducts.some((p) => String(p.id) === selectedProductId)) return;
+
+    if (filteredProducts.length === 0) {
       setSelectedProductId("");
+      return;
     }
-  }, [search, products]);
 
-  useEffect(() => {
-    if (products.length > 0 && !products.find(p => String(p.id) === selectedProductId)) {
-      setSelectedProductId(String(products[0].id));
-    }
-  }, [products, selectedProductId]);
+    setSelectedProductId(String(filteredProducts[0].id));
+  }, [search, localProducts]);
 
+
+  // -----------------------------------------
+  // Alertas
+  // -----------------------------------------
   const showAlert = (message: string, type: "success" | "error") => {
     setAlert({ message, type, key: alertKey });
     setAlertKey((prev) => prev + 1);
   };
 
+  // -----------------------------------------
+  // Resolve userId
+  // -----------------------------------------
+  const resolveUserId = (): string => {
+    const tryKeys = [
+      "loggedUser",
+      "loggedInUser",
+      "userId",
+      "loggedUserId",
+      "uid",
+      "user",
+      "currentUserId",
+    ];
+
+    for (const k of tryKeys) {
+      const v = localStorage.getItem(k);
+      if (v) return v.trim();
+    }
+
+    try {
+      const raw = localStorage.getItem("user");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.uid) return parsed.uid;
+        if (parsed?.id) return parsed.id;
+      }
+    } catch { }
+
+    try {
+      const firebaseUid = firebaseAuth?.currentUser?.uid;
+      if (firebaseUid) return firebaseUid;
+    } catch { }
+
+    return "";
+  };
+
+  // -----------------------------------------
+  // SCANNER
+  // -----------------------------------------
+  const handleDetected = async (barcodeRaw: string) => {
+    setScannerOpen(false);
+
+    const barcode = String(barcodeRaw ?? "").trim();
+    if (!barcode) {
+      showAlert("Código inválido.", "error");
+      return;
+    }
+
+    const userId = resolveUserId();
+    if (!userId) {
+      showAlert("Usuário não encontrado. Faça login novamente.", "error");
+      return;
+    }
+
+    try {
+      const product = await findProductByBarcode(userId, barcode);
+
+      if (!product) {
+        showAlert("Código não encontrado.", "error");
+        return;
+      }
+
+      const normalized = normalizeProduct(product);
+
+      setSearch(normalized.barcode || "");
+      setSelectedProductId(String(normalized.id));
+
+      // Se não existir localmente, adiciona
+      if (!localProducts.some((p) => String(p.id) === normalized.id)) {
+        setLocalProducts((prev) => [...prev, normalized]);
+      }
+
+      showAlert(`Produto encontrado: ${normalized.name}`, "success");
+    } catch (err) {
+      console.error(err);
+      showAlert("Erro ao buscar produto.", "error");
+    }
+  };
+
+  // -----------------------------------------
+  // REMOVER PRODUTO
+  // -----------------------------------------
   const handleRemove = async () => {
     if (!selectedProductId || quantity === "") {
-      showAlert("Selecione um produto e uma quantidade.", "error");
+      showAlert("Selecione um produto e informe a quantidade.", "error");
       return;
     }
 
@@ -61,11 +190,14 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
       return;
     }
 
-    const product = products.find((p) => String(p.id) === selectedProductId);
+    const product = localProducts.find((p) => String(p.id) === selectedProductId);
     if (!product) return;
 
     if (Number(quantity) > product.quantity) {
-      showAlert(`Não é possível remover mais que ${product.quantity} unidades.`, "error");
+      showAlert(
+        `Não é possível remover mais que ${product.quantity} unidades.`,
+        "error"
+      );
       return;
     }
 
@@ -79,53 +211,78 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
       setQuantity("");
       setExitDate(null);
       setSearch("");
-      setSelectedProductId(filteredProducts[0]?.id ?? "");
+
+      setSelectedProductId(filteredProducts.length > 0 ? String(filteredProducts[0].id) : "");
+
+
       showAlert("Produto removido com sucesso!", "success");
       onClose();
     } catch (err) {
-      console.error("Erro ao remover item:", err);
-      showAlert("Erro ao remover produto. Veja console.", "error");
+      showAlert("Erro ao remover produto.", "error");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
-        {/* ALERTA */}
-        {alert && (
-          <AlertBanner
-            key={alert.key}
-            message={alert.message}
-            type={alert.type}
-            onClose={() => setAlert(null)}
-          />
-        )}
+    <>
+      <ModalScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onResult={(code) => handleDetected(code)}
+      />
 
-        <h2 className="text-xl font-bold mb-4">Remover Produto</h2>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
+          {alert && (
+            <AlertBanner
+              key={alert.key}
+              message={alert.message}
+              type={alert.type}
+              onClose={() => setAlert(null)}
+            />
+          )}
 
-        <div className="flex flex-col gap-3">
-          <input
-            type="text"
-            placeholder="Buscar produto..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="cursor-text px-3 py-2 border rounded w-full"
-          />
+          <h2 className="text-xl font-bold mb-4">Remover Produto</h2>
 
+          {/* BUSCAR */}
+          <div className="flex items-center gap-2 mb-3">
+            <input
+              type="text"
+              placeholder="Buscar produto..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 px-3 py-2 border rounded"
+            />
+
+            <button
+              onClick={() => setScannerOpen(true)}
+              className="px-3 py-2 bg-lime-900 hover:bg-lime-800 text-white rounded flex items-center justify-center text-xl"
+            >
+              <FaCamera />
+            </button>
+          </div>
+
+          {/* SELECT */}
           <select
             value={selectedProductId}
             onChange={(e) => setSelectedProductId(e.target.value)}
-            className="cursor-pointer px-3 py-2 border rounded w-full"
+            className="cursor-pointer px-3 py-2 border rounded w-full mb-3"
           >
-            {filteredProducts.map((p) => (
-              <option key={p.id} value={String(p.id)}>
-                {p.name} (Em estoque: {p.quantity})
-              </option>
-            ))}
+            {filteredProducts.length > 0 ? (
+              filteredProducts.map((p) => (
+                <option key={p.id} value={String(p.id)}>
+                  {p.name} (Em estoque: {p.quantity})
+                </option>
+              ))
+            ) : (
+              <option value="">Nenhum produto encontrado</option>
+            )}
           </select>
 
+
+          {/* QUANTIDADE */}
           <input
             type="number"
             placeholder="Quantidade a remover"
@@ -133,36 +290,38 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
             onChange={(e) =>
               setQuantity(e.target.value === "" ? "" : Number(e.target.value))
             }
-            className="cursor-text px-3 py-2 border rounded w-full"
+            className="px-3 py-2 border rounded w-full mb-3"
             min={1}
           />
 
+          {/* DATA */}
           <DatePicker
             selected={exitDate}
             onChange={(date) => setExitDate(date)}
-            className="cursor-pointer px-3 py-2 border rounded w-full"
-            placeholderText="Escolha a data de saída"
+            className="px-3 py-2 border rounded w-full"
+            placeholderText="Data de saída"
             dateFormat="yyyy-MM-dd"
           />
-        </div>
 
-        <div className="mt-4 flex justify-end gap-2 flex-wrap">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-gray-200 rounded hover:bg-gray-300 transition"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleRemove}
-            disabled={loading}
-            className="cursor-pointer px-2 py-1 text-xs sm:px-4 sm:py-2 sm:text-base bg-red-800 text-white rounded hover:bg-red-700 transition"
-          >
-            {loading ? "Removendo..." : "Remover"}
-          </button>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition"
+            >
+              Cancelar
+            </button>
+
+            <button
+              onClick={handleRemove}
+              disabled={loading}
+              className="px-4 py-2 bg-red-800 text-white rounded hover:bg-red-700 transition"
+            >
+              {loading ? "Removendo..." : "Remover"}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };

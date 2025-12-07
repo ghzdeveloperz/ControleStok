@@ -1,3 +1,4 @@
+// src/components/modals/ModalScanner.tsx
 import React, { useState } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import BarcodeScannerComponent from "react-qr-barcode-scanner";
