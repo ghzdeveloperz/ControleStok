@@ -10,6 +10,7 @@ export interface Product {
   quantity?: number;
   category?: string;
   image?: string;
+  barcode?: string;
 }
 
 export const initialProducts: Product[] = [

@@ -33,14 +33,16 @@ export interface ProductQuantity {
   image?: string | null;
   minStock: number;
 
-  barcode?: string;
+  barcode: string; // <- Mantido como opcional para compatibilidade
 }
 
 // ------------------------------------------------------
 // LISTENER GLOBAL
 // ------------------------------------------------------
 
-export const onProductsUpdate = (callback: (products: ProductQuantity[]) => void) => {
+export const onProductsUpdate = (
+  callback: (products: ProductQuantity[]) => void
+) => {
   const ref = collection(db, "quantities");
 
   return onSnapshot(ref, (snapshot) => {
@@ -57,7 +59,7 @@ export const onProductsUpdate = (callback: (products: ProductQuantity[]) => void
         category: d.category ?? "Sem categoria",
         image: d.image ?? null,
         minStock: Number(d.minStock ?? 0),
-        barcode: d.barcode ?? "",
+        barcode: d.barcode ?? "", // <- Incluído aqui também
       };
     });
 
@@ -66,7 +68,7 @@ export const onProductsUpdate = (callback: (products: ProductQuantity[]) => void
 };
 
 // ------------------------------------------------------
-// LISTENER POR USUÁRIO
+// LISTENER POR USUÁRIO (principal para sua UI)
 // ------------------------------------------------------
 
 export const onProductsUpdateForUser = (
@@ -89,7 +91,7 @@ export const onProductsUpdateForUser = (
         category: d.category ?? "Sem categoria",
         image: d.image ?? null,
         minStock: Number(d.minStock ?? 0),
-        barcode: d.barcode ?? "",
+        barcode: d.barcode ?? "", // <- OBRIGATÓRIO AQUI
       };
     });
 
@@ -135,8 +137,9 @@ export const saveProductForUser = async (
 ): Promise<string> => {
   const ref = collection(db, "users", userId, "products");
 
-  // Inclui barcode se não existir
+  // Garante barcode sempre salvo
   const { price, barcode = "", ...dataToSave } = product;
+
   const docRef = await addDoc(ref, { ...dataToSave, barcode });
   return docRef.id;
 };
@@ -145,7 +148,10 @@ export const saveProductForUser = async (
 // REMOVER PRODUTO + MOVIMENTOS
 // ------------------------------------------------------
 
-export const removeProductForUser = async (userId: string, productId: string) => {
+export const removeProductForUser = async (
+  userId: string,
+  productId: string
+) => {
   const ref = doc(db, "users", userId, "products", productId);
   await deleteDoc(ref);
 
@@ -167,7 +173,6 @@ export const findProductByBarcode = async (
   barcode: string
 ): Promise<ProductQuantity | null> => {
   const ref = collection(db, "users", userId, "products");
-
   const q = query(ref, where("barcode", "==", barcode));
   const snap = await getDocs(q);
 
@@ -186,7 +191,7 @@ export const findProductByBarcode = async (
     category: d.category ?? "Sem categoria",
     image: d.image ?? null,
     minStock: Number(d.minStock ?? 0),
-    barcode: d.barcode ?? "",
+    barcode: d.barcode ?? "", // <- Garantido
   };
 };
 

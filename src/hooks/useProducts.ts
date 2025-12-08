@@ -47,7 +47,7 @@ export const useProducts = (userId: string) => {
           const name = p.name?.trim() || "Sem nome";
           const category = p.category?.trim() || "Sem categoria";
           const image = p.image || "/images/placeholder.png";
-          const barcode = p.barcode?.trim() || ""; // 🔥 GARANTIDO
+          const barcode = p.barcode?.trim() || "Sem Barcode"; // 🔥 GARANTIDO
 
           return {
             id: p.id,
