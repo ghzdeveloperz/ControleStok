@@ -3,9 +3,9 @@
 
 import React, { useState, useEffect } from "react";
 import { ProductCard } from "../components/ProductCard";
-import { ModalAddProduct } from "../components/modals/ModalAddProduct";
-import { ModalRemoveProduct } from "../components/modals/ModalRemoveProduct";
-import { ProductDetailsModal } from "../components/modals/ProductDetailsModal";
+import { ModalAddProduct } from "../components/modals/movements/ModalAddProduct";
+import { ModalRemoveProduct } from "../components/modals/movements/ModalRemoveProduct";
+import { ProductDetailsModal } from "../components/modals/products_details/ProductDetailsModal";
 import { AlertBanner } from "../components/AlertBanner";
 
 // products.ts

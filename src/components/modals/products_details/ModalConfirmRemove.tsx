@@ -1,6 +1,6 @@
 // src/components/modals/ModalConfirmRemove.tsx
 import React from "react";
-import { Product } from "../ProductCard";
+import { Product } from "../../ProductCard";
 
 interface Props {
   isOpen: boolean;

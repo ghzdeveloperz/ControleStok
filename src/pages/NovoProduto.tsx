@@ -4,8 +4,8 @@
   import { useNavigate } from "react-router-dom";
   import { FaPlus, FaCamera } from "react-icons/fa";
 
-  import { ModalAddCategory } from "../components/modals/ModalAddCategory";
-  import { ModalScanner } from "../components/modals/ModalScanner";
+  import { ModalAddCategory } from "../components/modals/categories/ModalAddCategory";
+  import { ModalScanner } from "../components/modals/scanner/ModalScanner";
   import { AlertBanner } from "../components/AlertBanner";
 
   import {
