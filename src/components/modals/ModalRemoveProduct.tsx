@@ -12,7 +12,7 @@ import { auth as firebaseAuth } from "../../firebase/firebase";
 export interface Product {
   id: string;
   name: string;
-  barcode?: string;
+  barcode: string; // agora obrigatório
   category?: string;
   cost?: number;
   unitPrice?: number;
@@ -34,7 +34,7 @@ const normalize = (v: any) => String(v ?? "").trim().toLowerCase();
 const normalizeProduct = (p: any): Product => ({
   id: String(p.id),
   name: p.name ?? "",
-  barcode: String(p.barcode ?? ""),
+  barcode: String(p.barcode), // obrigatório
   category: p.category ?? "",
   cost: Number(p.cost ?? 0),
   unitPrice: Number(p.unitPrice ?? p.cost ?? 0),
@@ -60,7 +60,7 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
     products.map(normalizeProduct)
   );
   const [loading, setLoading] = useState(false);
-  const [alert, setAlert] = useState<{ message: string; type: "success" | "error"; key: number } | null>(null);
+  const [alert, setAlert] = useState<{ message: string; type: "success" | "error"; key: number; } | null>(null);
   const [alertKey, setAlertKey] = useState(0);
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -71,6 +71,8 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   });
 
   useEffect(() => {
+    console.log("ModalRemoveProduct abriu, produtos recebidos (brutos):", products);
+    console.log("Produtos normalizados (localProducts):", localProducts);
     if (filteredProducts.some((p) => String(p.id) === selectedProductId)) return;
     setSelectedProductId(filteredProducts.length ? String(filteredProducts[0].id) : "");
   }, [search, localProducts]);
@@ -81,7 +83,7 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
     setAlertKey((prev) => prev + 1);
   };
 
-  // ---------------- RESOLVE USER ID ----------------
+  // ---------------- GET USER ID ----------------
   const resolveUserId = (): string => {
     const tryKeys = ["loggedUser", "loggedInUser", "userId", "loggedUserId", "uid", "user", "currentUserId"];
     for (const k of tryKeys) {
@@ -95,11 +97,11 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
         if (parsed?.uid) return parsed.uid;
         if (parsed?.id) return parsed.id;
       }
-    } catch {}
+    } catch { }
     try {
       const firebaseUid = firebaseAuth?.currentUser?.uid;
       if (firebaseUid) return firebaseUid;
-    } catch {}
+    } catch { }
     return "";
   };
 
@@ -116,17 +118,19 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
       showAlert("Usuário não encontrado. Faça login novamente.", "error");
       return;
     }
-
     try {
       const product = await findProductByBarcode(userId, barcode);
+      console.log("Produto encontrado pelo barcode (raw):", product);
       if (!product) {
         showAlert("Código não encontrado.", "error");
         return;
       }
       const normalized = normalizeProduct(product);
-      setSearch(normalized.barcode || "");
+      console.log("Produto normalizado após busca pelo barcode:", normalized);
+      setSearch(normalized.barcode);
       setSelectedProductId(String(normalized.id));
-      if (!localProducts.some((p) => String(p.id) === normalized.id)) {
+      const exists = localProducts.some((p) => String(p.id) === normalized.id);
+      if (!exists) {
         setLocalProducts((prev) => [...prev, normalized]);
       }
       showAlert(`Produto encontrado: ${normalized.name}`, "success");
@@ -148,15 +152,12 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
     }
     const product = localProducts.find((p) => String(p.id) === selectedProductId);
     if (!product) return;
-
     if (Number(quantity) > (product.quantity ?? 0)) {
       showAlert(`Não é possível remover mais que ${product.quantity} unidades.`, "error");
       return;
     }
-
     setLoading(true);
     const dateStr = exitDate.toISOString().split("T")[0];
-
     try {
       await onRemove(selectedProductId, Number(quantity), dateStr);
       setQuantity("");
@@ -177,46 +178,26 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   return (
     <>
       <ModalScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onResult={handleDetected} />
-
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
           {alert && <AlertBanner key={alert.key} message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
           <h2 className="text-xl font-bold mb-4">Remover Produto</h2>
-
           {/* BUSCAR */}
           <div className="flex items-center gap-2 mb-3">
-            <input
-              type="text"
-              placeholder="Buscar produto..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 px-3 py-2 border rounded"
-            />
-            <button
-              onClick={() => setScannerOpen(true)}
-              className="px-3 py-2 bg-lime-900 hover:bg-lime-800 text-white rounded flex items-center justify-center text-xl"
-            >
-              <FaCamera />
-            </button>
+            <input type="text" placeholder="Buscar produto..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 px-3 py-2 border rounded" />
+            <button onClick={() => setScannerOpen(true)} className="p-3 bg-black text-white rounded-xl"><FaCamera /></button>
           </div>
-
           {/* SELECT */}
-          <select
-            value={selectedProductId}
-            onChange={(e) => setSelectedProductId(e.target.value)}
-            className="cursor-pointer px-3 py-2 border rounded w-full mb-3"
-          >
+          <select value={selectedProductId} onChange={(e) => setSelectedProductId(e.target.value)} className="cursor-pointer px-3 py-2 border rounded w-full mb-3">
             {filteredProducts.length ? (
-              filteredProducts.map((p) => (
-                <option key={p.id} value={String(p.id)}>
-                  {p.name} (Em estoque: {p.quantity})
-                </option>
-              ))
+              filteredProducts.map((p) => {
+                console.log("Renderizando produto no select:", p);
+                return <option key={p.id} value={String(p.id)}>{p.name} • {p.barcode} • Em estoque: {p.quantity}</option>;
+              })
             ) : (
               <option value="">Nenhum produto encontrado</option>
             )}
           </select>
-
           {/* QUANTIDADE */}
           <input
             type="number"
@@ -224,33 +205,22 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
             value={quantity === "" ? "" : String(quantity)}
             onChange={(e) => setQuantity(e.target.value === "" ? "" : Number(e.target.value))}
             className="px-3 py-2 border rounded w-full mb-3"
-            min={1}
           />
 
           {/* DATA */}
           <DatePicker
             selected={exitDate}
             onChange={(date) => setExitDate(date)}
-            className="px-3 py-2 border rounded w-full"
             placeholderText="Data de saída"
             dateFormat="yyyy-MM-dd"
+            wrapperClassName="w-full"
+            className="w-full px-3 py-2 border rounded"
           />
 
+
           <div className="mt-4 flex justify-end gap-2">
-            <button
-              onClick={onClose}
-              disabled={loading}
-              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleRemove}
-              disabled={loading}
-              className="px-4 py-2 bg-red-800 text-white rounded hover:bg-red-700 transition"
-            >
-              {loading ? "Removendo..." : "Remover"}
-            </button>
+            <button onClick={onClose} disabled={loading} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition">Cancelar</button>
+            <button onClick={handleRemove} disabled={loading} className="px-4 py-2 bg-red-800 text-white rounded hover:bg-red-700 transition">{loading ? "Removendo..." : "Remover"}</button>
           </div>
         </div>
       </div>
