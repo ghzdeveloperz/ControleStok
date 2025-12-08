@@ -4,10 +4,10 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { FaCamera } from "react-icons/fa";
 
-import { AlertBanner } from "../../components/AlertBanner";
-import { ModalScanner } from "../modals/ModalScanner";
-import { findProductByBarcode } from "../../firebase/firestore/products";
-import { auth as firebaseAuth } from "../../firebase/firebase";
+import { AlertBanner } from "../../AlertBanner";
+import { ModalScanner } from "../scanner/ModalScanner";
+import { findProductByBarcode } from "../../../firebase/firestore/products";
+import { auth as firebaseAuth } from "../../../firebase/firebase";
 
 export interface Product {
   id: string;

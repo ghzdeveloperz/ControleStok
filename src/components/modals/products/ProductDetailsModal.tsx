@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { FaTrash, FaPen } from "react-icons/fa";
-import { Product } from "../ProductCard";
-import { ModalConfirmRemove } from "./ModalConfirmRemove";
-import { getCategoriesForUser } from "../../firebase/firestore/categories";
+import { Product } from "../../ProductCard";
+import { ModalConfirmRemove } from "../products_details/ModalConfirmRemove";
+import { getCategoriesForUser } from "../../../firebase/firestore/categories";
 import { doc, updateDoc } from "firebase/firestore";
-import { db } from "../../firebase/firebase";
+import { db } from "../../../firebase/firebase";
 
 interface Props {
   product: Product;
