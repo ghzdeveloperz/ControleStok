@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FaTrash, FaPlus, FaUser, FaTags, FaSignOutAlt } from "react-icons/fa";
 import { onCategoriesUpdateForUser } from "../firebase/firestore/categories";
-import { ModalManageCategories } from "../components/modals/ModalManageCategories";
+import { ModalManageCategories } from "../components/modals/categories/ModalManageCategories";
 import { useNavigate } from "react-router-dom";
-import { ModalLogout } from "../components/modals/ModalLogout";
+import { ModalLogout } from "../components/modals/logout/ModalLogout";
 
 interface ConfiguracoesProps {
   onLogoChange?: (newLogo: string) => void;

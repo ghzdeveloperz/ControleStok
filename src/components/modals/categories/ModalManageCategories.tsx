@@ -7,12 +7,12 @@ import {
   saveCategoryForUser,
   deleteCategoryForUser,
   onCategoriesUpdateForUser,
-} from "../../firebase/firestore/categories";
+} from "../../../firebase/firestore/categories";
 
 import {
   ProductQuantity,
   getProductsForUser,
-} from "../../firebase/firestore/products";
+} from "../../../firebase/firestore/products";
 
 interface ModalManageCategoriesProps {
   isOpen: boolean;

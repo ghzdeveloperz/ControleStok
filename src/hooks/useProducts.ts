@@ -1,21 +1,24 @@
 /* src/hooks/useProducts.ts */
+
+"use client";
+
 import { useEffect, useState } from "react";
 import {
   onProductsUpdateForUser,
   ProductQuantity as ProductQuantityFromDB,
 } from "../firebase/firestore/products";
 
-// Tipo final usado no FRONTEND
+// Tipo usado no FRONTEND
 export interface ProductQuantity {
   id: string;
   name: string;
   quantity: number;
-
-  price: number;      // calculado
-  unitPrice: number;  // do banco
+  price: number;
+  unitPrice: number;
   category: string;
   minStock: number;
   image?: string;
+  barcode: string; // 🔥 GARANTIDO
 }
 
 export const useProducts = (userId: string) => {
@@ -31,25 +34,31 @@ export const useProducts = (userId: string) => {
 
     setLoading(true);
 
+    // Listener em tempo real 🔥
     const unsubscribe = onProductsUpdateForUser(
       userId,
       (updatedProducts: ProductQuantityFromDB[]) => {
         const normalized: ProductQuantity[] = updatedProducts.map((p) => {
-          // Agora "price" existe no tipo do Firestore (opcional)
+          // Garantir que todos os campos estejam presentes e convertidos corretamente
           const price = Number(p.price ?? p.cost ?? p.unitPrice ?? 0);
           const unitPrice = Number(p.unitPrice ?? p.price ?? p.cost ?? 0);
+          const quantity = Number(p.quantity ?? 0);
+          const minStock = Number(p.minStock ?? 10);
+          const name = p.name?.trim() || "Sem nome";
+          const category = p.category?.trim() || "Sem categoria";
+          const image = p.image || "/images/placeholder.png";
+          const barcode = p.barcode?.trim() || "Sem Barcode"; // 🔥 GARANTIDO
 
           return {
             id: p.id,
-            name: p.name ?? "Sem nome",
-            quantity: Number(p.quantity ?? 0),
-
+            name,
+            quantity,
             price,
             unitPrice,
-
-            category: p.category ?? "Sem categoria",
-            minStock: Number(p.minStock ?? 0),
-            image: p.image ?? "/images/placeholder.png",
+            category,
+            minStock,
+            image,
+            barcode,
           };
         });
 
@@ -59,7 +68,9 @@ export const useProducts = (userId: string) => {
     );
 
     return () => {
-      if (typeof unsubscribe === "function") unsubscribe();
+      if (typeof unsubscribe === "function") {
+        unsubscribe();
+      }
     };
   }, [userId]);
 
