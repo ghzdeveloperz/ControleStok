@@ -38,7 +38,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
                 if (senhaMatch && (data.active ?? true)) {
                     userFound = true;
-                    onLoginSuccess(login);
+                    onLoginSuccess(data.login);
                     navigate("/estoque");
                     break;
                 }

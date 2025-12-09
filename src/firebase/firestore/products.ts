@@ -1,4 +1,4 @@
-// src/firebase/firestore/products.ts
+/* src/firebase/firestore/products.ts */
 
 import {
   collection,
@@ -14,7 +14,6 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { StockMovement } from "./movements";
 
 // ------------------------------------------------------
 // TIPOS
@@ -24,7 +23,6 @@ export interface ProductQuantity {
   id: string;
   name: string;
   category: string;
-
   quantity: number;
 
   cost?: number;
@@ -34,6 +32,8 @@ export interface ProductQuantity {
 
   image?: string | null;
   minStock: number;
+
+  barcode: string; // <- Mantido como opcional para compatibilidade
 }
 
 // ------------------------------------------------------
@@ -59,6 +59,7 @@ export const onProductsUpdate = (
         category: d.category ?? "Sem categoria",
         image: d.image ?? null,
         minStock: Number(d.minStock ?? 0),
+        barcode: d.barcode ?? "", // <- Incluído aqui também
       };
     });
 
@@ -67,7 +68,7 @@ export const onProductsUpdate = (
 };
 
 // ------------------------------------------------------
-// LISTENER POR USUÁRIO
+// LISTENER POR USUÁRIO (principal para sua UI)
 // ------------------------------------------------------
 
 export const onProductsUpdateForUser = (
@@ -90,6 +91,7 @@ export const onProductsUpdateForUser = (
         category: d.category ?? "Sem categoria",
         image: d.image ?? null,
         minStock: Number(d.minStock ?? 0),
+        barcode: d.barcode ?? "", // <- OBRIGATÓRIO AQUI
       };
     });
 
@@ -120,6 +122,7 @@ export const getProductsForUser = async (
       category: d.category ?? "Sem categoria",
       image: d.image ?? null,
       minStock: Number(d.minStock ?? 0),
+      barcode: d.barcode ?? "",
     };
   });
 };
@@ -133,12 +136,13 @@ export const saveProductForUser = async (
   product: Omit<ProductQuantity, "id">
 ): Promise<string> => {
   const ref = collection(db, "users", userId, "products");
-  const { price, ...dataToSave } = product; // não salvar price no banco
 
-  const docRef = await addDoc(ref, dataToSave);
-  return docRef.id; // ✅ retorna apenas o ID
+  // Garante barcode sempre salvo
+  const { price, barcode = "", ...dataToSave } = product;
+
+  const docRef = await addDoc(ref, { ...dataToSave, barcode });
+  return docRef.id;
 };
-
 
 // ------------------------------------------------------
 // REMOVER PRODUTO + MOVIMENTOS
@@ -151,13 +155,73 @@ export const removeProductForUser = async (
   const ref = doc(db, "users", userId, "products", productId);
   await deleteDoc(ref);
 
-  // remover movimentos associados
   const movRef = collection(db, "users", userId, "movements");
   const q = query(movRef, where("productId", "==", productId));
   const snap = await getDocs(q);
 
   const batch = writeBatch(db);
   snap.docs.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+};
+
+// ------------------------------------------------------
+// BARCODE SUPPORT 100% CORRIGIDO
+// ------------------------------------------------------
+
+export const findProductByBarcode = async (
+  userId: string,
+  barcode: string
+): Promise<ProductQuantity | null> => {
+  const ref = collection(db, "users", userId, "products");
+  const q = query(ref, where("barcode", "==", barcode));
+  const snap = await getDocs(q);
+
+  if (snap.empty) return null;
+
+  const docSnap = snap.docs[0];
+  const d = docSnap.data() as DocumentData;
+
+  return {
+    id: docSnap.id,
+    name: d.name,
+    quantity: Number(d.quantity ?? 0),
+    cost: Number(d.cost ?? 0),
+    unitPrice: Number(d.unitPrice ?? 0),
+    price: Number(d.price ?? d.cost ?? d.unitPrice ?? 0),
+    category: d.category ?? "Sem categoria",
+    image: d.image ?? null,
+    minStock: Number(d.minStock ?? 0),
+    barcode: d.barcode ?? "", // <- Garantido
+  };
+};
+
+export const saveBarcodeToProduct = async (
+  userId: string,
+  productId: string,
+  barcode: string
+) => {
+  const ref = doc(db, "users", userId, "products", productId);
+  await updateDoc(ref, { barcode });
+};
+
+// ------------------------------------------------------
+// SCRIPT DE ATUALIZAÇÃO DE PRODUTOS ANTIGOS
+// ------------------------------------------------------
+
+export const ensureAllProductsHaveBarcode = async (userId: string) => {
+  const productsRef = collection(db, "users", userId, "products");
+  const snapshot = await getDocs(productsRef);
+
+  const batch = writeBatch(db);
+  snapshot.docs.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!("barcode" in data)) {
+      batch.update(doc(db, "users", userId, "products", docSnap.id), {
+        barcode: "",
+      });
+    }
+  });
 
   await batch.commit();
+  console.log(`Produtos do usuário ${userId} atualizados com barcode.`);
 };

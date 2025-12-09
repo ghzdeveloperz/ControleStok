@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { FaTrash, FaPen } from "react-icons/fa";
-import { Product } from "../ProductCard";
-import { ModalConfirmRemove } from "./ModalConfirmRemove";
-import { getCategoriesForUser } from "../../firebase/firestore/categories";
+import { Product } from "../../ProductCard";
+import { ModalConfirmRemove } from "../products_details/ModalConfirmRemove";
+import { getCategoriesForUser } from "../../../firebase/firestore/categories";
 import { doc, updateDoc } from "firebase/firestore";
-import { db } from "../../firebase/firebase";
+import { db } from "../../../firebase/firebase";
 
 interface Props {
   product: Product;
@@ -29,6 +29,12 @@ export const ProductDetailsModal: React.FC<Props> = ({
   const [localName, setLocalName] = useState(product.name ?? "");
   const [localCategory, setLocalCategory] = useState(product.category);
   const [localMinStock, setLocalMinStock] = useState(Number(product.minStock ?? 10));
+  const [localBarcode, setLocalBarcode] = useState(product.barcode ?? "");
+
+
+  useEffect(() => {
+    console.log("Produto recebido no modal:", product);
+  }, [product]);
 
   useEffect(() => {
     const load = async () => {
@@ -43,6 +49,7 @@ export const ProductDetailsModal: React.FC<Props> = ({
     setLocalName(product.name ?? "");
     setLocalCategory(product.category);
     setLocalMinStock(Number(product.minStock ?? 10));
+    setLocalBarcode(product.barcode ?? "");
   }, [product]);
 
   const formatCurrency = (value: number) =>
@@ -136,6 +143,17 @@ export const ProductDetailsModal: React.FC<Props> = ({
               </div>
             )}
 
+            {/* Código de Barras */}
+            {localBarcode ? (
+              <p className="text-sm">
+                <strong>Código de barras:</strong> {localBarcode}
+              </p>
+            ) : (
+              <p className="text-sm text-gray-400">
+                Código de barras não informado
+              </p>
+            )}
+
             {/* Categoria */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
@@ -183,18 +201,19 @@ export const ProductDetailsModal: React.FC<Props> = ({
                 </div>
               )}
 
-              {/* Preço unitário (removido edição) */}
+              {/* Quantidade */}
+              <p className="text-sm">
+                <strong>Quantidade em estoque:</strong> {safeQuantity}
+              </p>
+
+              {/* Preço unitário */}
               <p className="text-sm">
                 <strong>Preço unitário:</strong> {formatCurrency(product.unitPrice ?? product.price)}
               </p>
 
-
+              {/* Custo médio */}
               <p className="text-sm">
                 <strong>Custo médio:</strong> {formatCurrency(safePrice)}
-              </p>
-
-              <p className="text-sm">
-                <strong>Quantidade em estoque:</strong> {safeQuantity}
               </p>
 
               {/* Estoque mínimo */}
@@ -238,8 +257,8 @@ export const ProductDetailsModal: React.FC<Props> = ({
                 </div>
               )}
 
+              {/* Custo total */}
               <hr />
-
               <p className="text-sm font-semibold text-gray-700">
                 Custo total em estoque:{" "}
                 <span className="text-black">{formatCurrency(totalCost)}</span>
