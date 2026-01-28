@@ -1,16 +1,11 @@
 {
   "hosting": {
     "public": "dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
+      { "source": "/politics-privacy.html", "destination": "/politics-privacy.html" },
+      { "source": "/terms-of-use.html", "destination": "/terms-of-use.html" },
+      { "source": "**", "destination": "/index.html" }
     ]
   }
 }

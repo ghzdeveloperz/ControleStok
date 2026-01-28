@@ -1,3 +1,4 @@
+// src/App.tsx
 import React, { useState, useEffect } from "react"
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom"
 
@@ -23,9 +24,7 @@ import { FaBoxes, FaPlus, FaChartBar, FaExclamationTriangle, FaCog } from "react
 export const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!localStorage.getItem("loggedInUser"))
 
-  const [loggedUser, setLoggedUser] = useState<string>(
-    localStorage.getItem("loggedInUser") ?? "usuário"
-  )
+  const [loggedUser, setLoggedUser] = useState<string>(localStorage.getItem("loggedInUser") ?? "usuário")
 
   const handleLoginSuccess = (login: string) => {
     localStorage.setItem("loggedInUser", login)
@@ -42,26 +41,26 @@ export const App: React.FC = () => {
   return (
     <LoadingProvider>
       <Routes>
+        {/* =================== DESLOGADO =================== */}
         {!isLoggedIn && (
           <>
             <Route path="/" element={<Home />} />
 
-            {/* ✅ ROTAS LEGAIS (DESLOGADO) */}
+            {/* ✅ PÁGINAS BONITAS (TSX) para humanos */}
             <Route path="/politics-privacy" element={<PrivacyPolicy />} />
             <Route path="/terms-of-use" element={<TermsOfUse />} />
 
+            {/* ✅ Login */}
             <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
 
-            {/* ✅ mantém fallback */}
+            {/* ✅ Qualquer outra coisa volta pra home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         )}
 
+        {/* =================== LOGADO =================== */}
         {isLoggedIn && (
-          <Route
-            path="/*"
-            element={<AppContent loggedUser={loggedUser} onLogout={handleLogout} />}
-          />
+          <Route path="/*" element={<AppContent loggedUser={loggedUser} onLogout={handleLogout} />} />
         )}
       </Routes>
     </LoadingProvider>
@@ -78,9 +77,7 @@ const AppContent: React.FC<{
 
   const [sidebarWidth, setSidebarWidth] = useState(260)
 
-  const [logoSrc, setLogoSrc] = useState(
-    localStorage.getItem("appLogo") ?? "/images/jinjin-banner.png"
-  )
+  const [logoSrc, setLogoSrc] = useState(localStorage.getItem("appLogo") ?? "/images/jinjin-banner.png")
 
   const storedProfile = localStorage.getItem("profileImage")
   const [profileSrc, setProfileSrc] = useState(
@@ -162,12 +159,7 @@ const AppContent: React.FC<{
 
         {/* FOOTER MOBILE */}
         <div className="md:hidden w-full bg-white border-t border-gray-300 flex justify-around items-center py-3 shadow-lg">
-          <MobileItem
-            active={location.pathname === "/estoque"}
-            icon={<FaBoxes size={22} />}
-            label="Estoque"
-            onClick={() => navigate("/estoque")}
-          />
+          <MobileItem active={location.pathname === "/estoque"} icon={<FaBoxes size={22} />} label="Estoque" onClick={() => navigate("/estoque")} />
 
           <MobileItem
             active={location.pathname === "/estoque/novoproduto"}
@@ -192,12 +184,7 @@ const AppContent: React.FC<{
             zero={zeroStockCount}
           />
 
-          <MobileItem
-            active={location.pathname === "/configuracoes"}
-            icon={<FaCog size={22} />}
-            label="Config"
-            onClick={() => navigate("/configuracoes")}
-          />
+          <MobileItem active={location.pathname === "/configuracoes"} icon={<FaCog size={22} />} label="Config" onClick={() => navigate("/configuracoes")} />
         </div>
       </div>
     </div>
@@ -223,22 +210,17 @@ function MobileItem({
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center px-3 py-1.5 rounded-xl transition-all ${
-        active ? "bg-black text-white" : "text-gray-700 hover:bg-gray-200"
-      }`}
+      className={`relative flex flex-col items-center px-3 py-1.5 rounded-xl transition-all ${active ? "bg-black text-white" : "text-gray-700 hover:bg-gray-200"
+        }`}
     >
       <div className="relative">
         {icon}
         <div className="absolute -top-1 -right-2 flex gap-0.5">
           {low > 0 && (
-            <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              {low}
-            </span>
+            <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{low}</span>
           )}
           {zero > 0 && (
-            <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              {zero}
-            </span>
+            <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{zero}</span>
           )}
         </div>
       </div>
