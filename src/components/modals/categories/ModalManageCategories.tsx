@@ -2,17 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { FaTrash } from "react-icons/fa";
+import { FirebaseError } from "firebase/app";
 
 import {
   saveCategoryForUser,
   deleteCategoryForUser,
   onCategoriesUpdateForUser,
 } from "../../../firebase/firestore/categories";
-
-import {
-  ProductQuantity,
-  getProductsForUser,
-} from "../../../firebase/firestore/products";
 
 interface ModalManageCategoriesProps {
   isOpen: boolean;
@@ -36,6 +32,7 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<
     string | null
   >(null);
+  const [busy, setBusy] = useState(false);
 
   // ----------------------------
   // 🔥 REALTIME FIRESTORE LISTENER
@@ -43,9 +40,11 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
   useEffect(() => {
     if (!userId) return;
 
-    const unsub = onCategoriesUpdateForUser(userId, (list) => {
-      setCategories(list);
-    });
+    const unsub = onCategoriesUpdateForUser(
+      userId,
+      setCategories,
+      () => setErrorDeleteMessage("Não foi possível carregar as categorias."),
+    );
 
     return () => unsub();
   }, [userId, setCategories]);
@@ -54,49 +53,40 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
   // ADICIONAR
   // ----------------------------
   const addCategory = async () => {
-    if (!newCategory.trim()) return;
+    const normalizedName = newCategory.trim();
+    if (!normalizedName || busy) return;
+    if (normalizedName.length > 80) {
+      setErrorDeleteMessage("A categoria deve ter no máximo 80 caracteres.");
+      return;
+    }
 
     if (
       categories.some(
         (cat) =>
-          cat.toLowerCase() === newCategory.trim().toLowerCase()
+          cat.toLowerCase() === normalizedName.toLowerCase()
       )
     ) {
       setErrorDeleteMessage(`A categoria "${newCategory}" já existe!`);
       return;
     }
 
-    await saveCategoryForUser(userId, newCategory.trim());
-    setNewCategory("");
-    setErrorDeleteMessage(null);
-  };
-
-  // ----------------------------
-  // VERIFICAR SE TEM PRODUTOS
-  // ----------------------------
-  const categoryHasProducts = async (categoryName: string) => {
-    const products: ProductQuantity[] = await getProductsForUser(userId);
-
-    return products.some(
-      (p) =>
-        p.category?.toLowerCase() === categoryName.toLowerCase()
-    );
+    setBusy(true);
+    try {
+      await saveCategoryForUser(userId, normalizedName);
+      setNewCategory("");
+      setErrorDeleteMessage(null);
+    } catch {
+      setErrorDeleteMessage("Não foi possível adicionar a categoria.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   // ----------------------------
   // TENTAR EXCLUIR
   // ----------------------------
-  const tryDeleteCategory = async (name: string) => {
+  const tryDeleteCategory = (name: string) => {
     setErrorDeleteMessage(null);
-
-    const hasProducts = await categoryHasProducts(name);
-    if (hasProducts) {
-      setErrorDeleteMessage(
-        "Esta categoria não pode ser excluída porque há produtos usando ela."
-      );
-      return;
-    }
-
     setConfirmDeleteCategory(name);
   };
 
@@ -106,8 +96,23 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
   const confirmDelete = async () => {
     if (!confirmDeleteCategory) return;
 
-    await deleteCategoryForUser(userId, confirmDeleteCategory);
-    setConfirmDeleteCategory(null);
+    setBusy(true);
+    try {
+      await deleteCategoryForUser(userId, confirmDeleteCategory);
+      setConfirmDeleteCategory(null);
+    } catch (error) {
+      const categoryInUse =
+        error instanceof FirebaseError &&
+        error.code === "functions/failed-precondition";
+      setErrorDeleteMessage(
+        categoryInUse
+          ? "Esta categoria não pode ser excluída porque há produtos usando ela."
+          : "Não foi possível excluir a categoria.",
+      );
+      setConfirmDeleteCategory(null);
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -130,11 +135,13 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
             className="flex-1 border px-3 py-2 rounded-lg w-full"
             placeholder="Nova categoria"
             value={newCategory}
+            maxLength={80}
             onChange={(e) => setNewCategory(e.target.value)}
           />
           <button
-            onClick={addCategory}
-            className="bg-gray-900 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-800 w-full sm:w-auto"
+            onClick={() => void addCategory()}
+            disabled={busy}
+            className="bg-gray-900 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-800 w-full sm:w-auto disabled:opacity-60"
           >
             Adicionar
           </button>
@@ -149,6 +156,7 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
               <span>{cat}</span>
               <button
                 onClick={() => tryDeleteCategory(cat)}
+                disabled={busy}
                 className="text-red-600 hover:text-red-800 cursor-pointer"
               >
                 <FaTrash />
@@ -185,7 +193,8 @@ export const ModalManageCategories: React.FC<ModalManageCategoriesProps> = ({
 
                 <button
                   className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 cursor-pointer"
-                  onClick={confirmDelete}
+                  onClick={() => void confirmDelete()}
+                  disabled={busy}
                 >
                   Excluir
                 </button>

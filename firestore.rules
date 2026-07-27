@@ -1,0 +1,66 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function validRole(role) {
+      return role in ['owner', 'admin', 'manager', 'member', 'viewer'];
+    }
+
+    function userRoot() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function canReadWorkspace(workspaceId) {
+      return signedIn()
+        && request.auth.uid.size() > 0
+        && request.auth.uid.size() <= 128
+        && request.auth.token.workspaceId is string
+        && request.auth.token.workspaceId == workspaceId
+        && request.auth.token.login is string
+        && request.auth.token.login.size() > 0
+        && request.auth.token.login.size() <= 128
+        && request.auth.token.memberRole is string
+        && validRole(request.auth.token.memberRole)
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userRoot().active == true
+        && userRoot().workspaceId == workspaceId
+        && userRoot().login == request.auth.token.login
+        && userRoot().memberRole == request.auth.token.memberRole;
+    }
+
+    match /users/{userId} {
+      allow read, write: if false;
+
+      match /products/{productId} {
+        allow read: if canReadWorkspace(userId);
+        allow write: if false;
+      }
+
+      match /categories/{categoryId} {
+        allow read: if canReadWorkspace(userId);
+        allow write: if false;
+      }
+
+      match /movements/{movementId} {
+        allow read: if canReadWorkspace(userId);
+        allow write: if false;
+      }
+
+      match /_security/{document=**} {
+        allow read, write: if false;
+      }
+    }
+
+    match /_security/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

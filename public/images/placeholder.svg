@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-labelledby="title description">
+  <title id="title">Imagem indisponível</title>
+  <desc id="description">Espaço reservado para produto sem imagem.</desc>
+  <rect width="400" height="300" fill="#f4f4f5"/>
+  <g fill="none" stroke="#a1a1aa" stroke-linecap="round" stroke-linejoin="round" stroke-width="10">
+    <rect x="105" y="70" width="190" height="160" rx="18"/>
+    <circle cx="165" cy="125" r="18"/>
+    <path d="m125 205 55-55 38 38 25-25 32 42"/>
+  </g>
+</svg>

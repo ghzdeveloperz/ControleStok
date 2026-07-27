@@ -6,12 +6,16 @@ import { onCategoriesUpdateForUser } from "../firebase/firestore/categories";
 import { ModalManageCategories } from "../components/modals/categories/ModalManageCategories";
 import { useNavigate } from "react-router-dom";
 import { ModalLogout } from "../components/modals/logout/ModalLogout";
+import {
+  sanitizeImageSource,
+  validateAndReadImage,
+} from "../utils/imageValidation";
 
 interface ConfiguracoesProps {
   onLogoChange?: (newLogo: string) => void;
   onProfileChange?: (newProfile: string) => void;
   onLogout?: () => void;
-  userId?: string; // sem fallback
+  userId: string;
 }
 
 export const Configuracoes: React.FC<ConfiguracoesProps> = ({
@@ -45,33 +49,31 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
     const savedLogo = localStorage.getItem("appLogo");
     const savedProfile = localStorage.getItem("profileImage");
 
-    if (savedLogo) setLogoSrc(savedLogo);
-    if (savedProfile) setProfileSrc(savedProfile);
+    setLogoSrc(sanitizeImageSource(savedLogo, "/images/jinjin-banner.png"));
+    setProfileSrc(
+      sanitizeImageSource(savedProfile, "/images/profile-200.jpg"),
+    );
   }, []);
 
   // Upload de banner
-  const handleUploadLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const img = new Image();
-    img.onload = () => {
-      if (img.width !== 1224 || img.height !== 260) {
-        alert("O banner deve ter exatamente 1224x260 px");
-        if (logoInputRef.current) logoInputRef.current.value = "";
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        setLogoSrc(result);
-        localStorage.setItem("appLogo", result);
-        onLogoChange?.(result);
-        if (logoInputRef.current) logoInputRef.current.value = "";
-      };
-      reader.readAsDataURL(file);
-    };
-    img.src = URL.createObjectURL(file);
+    try {
+      const result = await validateAndReadImage(file, {
+        maxBytes: 500 * 1024,
+        exactWidth: 1224,
+        exactHeight: 260,
+      });
+      localStorage.setItem("appLogo", result);
+      setLogoSrc(result);
+      onLogoChange?.(result);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Banner inválido.");
+    } finally {
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
   };
 
   const removeLogo = () => {
@@ -81,28 +83,24 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
   };
 
   // Upload de perfil
-  const handleUploadProfile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadProfile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const img = new Image();
-    img.onload = () => {
-      if (img.width !== 200 || img.height !== 200) {
-        alert("A imagem deve ter exatamente 200x200 px");
-        if (profileInputRef.current) profileInputRef.current.value = "";
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        setProfileSrc(result);
-        localStorage.setItem("profileImage", result);
-        onProfileChange?.(result);
-        if (profileInputRef.current) profileInputRef.current.value = "";
-      };
-      reader.readAsDataURL(file);
-    };
-    img.src = URL.createObjectURL(file);
+    try {
+      const result = await validateAndReadImage(file, {
+        maxBytes: 300 * 1024,
+        exactWidth: 200,
+        exactHeight: 200,
+      });
+      localStorage.setItem("profileImage", result);
+      setProfileSrc(result);
+      onProfileChange?.(result);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Imagem de perfil inválida.");
+    } finally {
+      if (profileInputRef.current) profileInputRef.current.value = "";
+    }
   };
 
   const removeProfile = () => {
@@ -166,8 +164,8 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
                   <input
                     ref={profileInputRef}
                     type="file"
-                    accept="image/*"
-                    onChange={handleUploadProfile}
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => void handleUploadProfile(event)}
                     className="hidden"
                   />
                 </label>
@@ -200,8 +198,8 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
                   <input
                     ref={logoInputRef}
                     type="file"
-                    accept="image/*"
-                    onChange={handleUploadLogo}
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => void handleUploadLogo(event)}
                     className="hidden"
                   />
                 </label>
@@ -246,7 +244,7 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
         onClose={() => setShowCategoriesModal(false)}
         categories={categories}
         setCategories={setCategories}
-        userId={userId ?? "defaultUserId"}
+        userId={userId}
 
       />
 

@@ -9,7 +9,7 @@ import {
   FaExclamationTriangle,
 } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaBarcode } from "react-icons/fa";
+import type { IconType } from "react-icons";
 
 
 interface SidebarProps {
@@ -250,7 +250,7 @@ export function Sidebar({
 /* ---------------------- ITEM DESKTOP ---------------------- */
 interface SidebarItemProps {
   collapsed: boolean;
-  icon: any;
+  icon: IconType;
   label: string;
   active?: boolean;
   onClick?: () => void;

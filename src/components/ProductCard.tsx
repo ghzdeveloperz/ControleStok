@@ -1,9 +1,7 @@
 /* src/components/ProductCard.tsx */
 import React from "react";
-import {
-  ProductQuantity as ProductQuantityFromDB,
-  removeProductForUser,
-} from "../firebase/firestore/products";
+import { removeProductForUser } from "../firebase/firestore/products";
+import type { ProductQuantity as ProductQuantityFromDB } from "../firebase/firestore/products";
 
 // Tipagem usada SOMENTE no front-end
 // Sem extender diretamente o tipo do Firestore (evita erro)
@@ -51,8 +49,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       }
 
       if (onRemove) onRemove(id);
-    } catch (err) {
-      console.error("Erro ao remover produto:", err);
+    } catch {
+      window.alert("Não foi possível arquivar o produto.");
     }
   };
 
@@ -75,7 +73,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         const imageSrc =
           product.image && product.image.trim() !== ""
             ? product.image
-            : "/images/placeholder.png";
+            : "/images/placeholder.svg";
 
         let status: "OK" | "Baixo" | "Zerado" = "OK";
         if (safeQuantity === 0) status = "Zerado";
@@ -100,7 +98,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 className="w-full h-full object-cover transform hover:scale-105 transition-transform"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src =
-                    "/images/placeholder.png";
+                    "/images/placeholder.svg";
                 }}
               />
             </div>

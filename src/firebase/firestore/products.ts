@@ -1,227 +1,146 @@
-/* src/firebase/firestore/products.ts */
-
 import {
   collection,
-  addDoc,
   getDocs,
-  deleteDoc,
-  doc,
-  updateDoc,
-  DocumentData,
   onSnapshot,
   query,
   where,
-  writeBatch,
 } from "firebase/firestore";
+import type { DocumentData, FirestoreError } from "firebase/firestore";
+import {
+  archiveProduct,
+  createProduct,
+  updateProduct,
+  type ProductChanges,
+} from "../callables";
 import { db } from "../firebase";
-
-// ------------------------------------------------------
-// TIPOS
-// ------------------------------------------------------
+import { sanitizeImageSource } from "../../utils/imageValidation";
 
 export interface ProductQuantity {
   id: string;
   name: string;
   category: string;
   quantity: number;
-
   cost?: number;
   unitPrice: number;
-
   price?: number;
-
   image?: string | null;
   minStock: number;
-
-  barcode: string; // <- Mantido como opcional para compatibilidade
+  barcode: string;
 }
 
-// ------------------------------------------------------
-// LISTENER GLOBAL
-// ------------------------------------------------------
-
-export const onProductsUpdate = (
-  callback: (products: ProductQuantity[]) => void
-) => {
-  const ref = collection(db, "quantities");
-
-  return onSnapshot(ref, (snapshot) => {
-    const list = snapshot.docs.map((docSnap) => {
-      const d = docSnap.data() as DocumentData;
-
-      return {
-        id: docSnap.id,
-        name: d.name ?? "Sem nome",
-        quantity: Number(d.quantity ?? 0),
-        cost: Number(d.cost ?? 0),
-        unitPrice: Number(d.unitPrice ?? 0),
-        price: Number(d.price ?? d.cost ?? d.unitPrice ?? 0),
-        category: d.category ?? "Sem categoria",
-        image: d.image ?? null,
-        minStock: Number(d.minStock ?? 0),
-        barcode: d.barcode ?? "", // <- Incluído aqui também
-      };
-    });
-
-    callback(list);
-  });
+const assertWorkspaceId = (workspaceId: string) => {
+  if (
+    typeof workspaceId !== "string" ||
+    workspaceId.trim().length === 0 ||
+    workspaceId.length > 128 ||
+    workspaceId.includes("/")
+  ) {
+    throw new Error("Workspace inválido.");
+  }
 };
 
-// ------------------------------------------------------
-// LISTENER POR USUÁRIO (principal para sua UI)
-// ------------------------------------------------------
+const mapProduct = (id: string, data: DocumentData): ProductQuantity => ({
+  id,
+  name: typeof data.name === "string" ? data.name : "Produto sem nome",
+  quantity: Number(data.quantity ?? 0),
+  cost: Number(data.cost ?? 0),
+  unitPrice: Number(data.unitPrice ?? 0),
+  price: Number(data.price ?? data.cost ?? data.unitPrice ?? 0),
+  category:
+    typeof data.category === "string" ? data.category : "Sem categoria",
+  image: sanitizeImageSource(data.image, "", 500_000) || null,
+  minStock: Number(data.minStock ?? 0),
+  barcode: typeof data.barcode === "string" ? data.barcode : "",
+});
 
 export const onProductsUpdateForUser = (
-  userId: string,
-  callback: (products: ProductQuantity[]) => void
+  workspaceId: string,
+  callback: (products: ProductQuantity[]) => void,
+  onError?: (error: FirestoreError) => void,
 ) => {
-  const ref = collection(db, "users", userId, "products");
+  assertWorkspaceId(workspaceId);
+  const reference = collection(db, "users", workspaceId, "products");
 
-  return onSnapshot(ref, (snapshot) => {
-    const list = snapshot.docs.map((docSnap) => {
-      const d = docSnap.data() as DocumentData;
-
-      return {
-        id: docSnap.id,
-        name: d.name ?? "Produto sem nome",
-        quantity: Number(d.quantity ?? 0),
-        cost: Number(d.cost ?? 0),
-        unitPrice: Number(d.unitPrice ?? 0),
-        price: Number(d.price ?? d.cost ?? d.unitPrice ?? 0),
-        category: d.category ?? "Sem categoria",
-        image: d.image ?? null,
-        minStock: Number(d.minStock ?? 0),
-        barcode: d.barcode ?? "", // <- OBRIGATÓRIO AQUI
-      };
-    });
-
-    callback(list);
-  });
+  return onSnapshot(
+    reference,
+    (snapshot) => {
+      const products = snapshot.docs
+        .filter((document) => document.data().archived !== true)
+        .map((document) => mapProduct(document.id, document.data()));
+      callback(products);
+    },
+    onError,
+  );
 };
-
-// ------------------------------------------------------
-// GET PRODUCTS
-// ------------------------------------------------------
 
 export const getProductsForUser = async (
-  userId: string
+  workspaceId: string,
 ): Promise<ProductQuantity[]> => {
-  const ref = collection(db, "users", userId, "products");
-  const snapshot = await getDocs(ref);
+  assertWorkspaceId(workspaceId);
+  const reference = collection(db, "users", workspaceId, "products");
+  const snapshot = await getDocs(reference);
 
-  return snapshot.docs.map((docSnap) => {
-    const d = docSnap.data() as DocumentData;
-
-    return {
-      id: docSnap.id,
-      name: d.name,
-      quantity: Number(d.quantity ?? 0),
-      cost: Number(d.cost ?? 0),
-      unitPrice: Number(d.unitPrice ?? 0),
-      price: Number(d.price ?? d.cost ?? d.unitPrice ?? 0),
-      category: d.category ?? "Sem categoria",
-      image: d.image ?? null,
-      minStock: Number(d.minStock ?? 0),
-      barcode: d.barcode ?? "",
-    };
-  });
+  return snapshot.docs
+    .filter((document) => document.data().archived !== true)
+    .map((document) => mapProduct(document.id, document.data()));
 };
-
-// ------------------------------------------------------
-// SALVAR PRODUTO
-// ------------------------------------------------------
 
 export const saveProductForUser = async (
-  userId: string,
-  product: Omit<ProductQuantity, "id">
+  workspaceId: string,
+  product: Omit<ProductQuantity, "id">,
+  date: string,
 ): Promise<string> => {
-  const ref = collection(db, "users", userId, "products");
+  assertWorkspaceId(workspaceId);
 
-  // Garante barcode sempre salvo
-  const { price, barcode = "", ...dataToSave } = product;
-
-  const docRef = await addDoc(ref, { ...dataToSave, barcode });
-  return docRef.id;
+  return createProduct({
+    name: product.name,
+    category: product.category,
+    quantity: product.quantity,
+    cost: Number(product.cost ?? product.unitPrice ?? 0),
+    unitPrice: Number(product.unitPrice ?? product.cost ?? 0),
+    image: product.image,
+    minStock: product.minStock,
+    barcode: product.barcode,
+    date,
+  });
 };
-
-// ------------------------------------------------------
-// REMOVER PRODUTO + MOVIMENTOS
-// ------------------------------------------------------
 
 export const removeProductForUser = async (
-  userId: string,
-  productId: string
+  workspaceId: string,
+  productId: string,
 ) => {
-  const ref = doc(db, "users", userId, "products", productId);
-  await deleteDoc(ref);
-
-  const movRef = collection(db, "users", userId, "movements");
-  const q = query(movRef, where("productId", "==", productId));
-  const snap = await getDocs(q);
-
-  const batch = writeBatch(db);
-  snap.docs.forEach((d) => batch.delete(d.ref));
-  await batch.commit();
+  assertWorkspaceId(workspaceId);
+  if (!productId || productId.includes("/")) throw new Error("Produto inválido.");
+  await archiveProduct(productId);
 };
 
-// ------------------------------------------------------
-// BARCODE SUPPORT 100% CORRIGIDO
-// ------------------------------------------------------
+export const updateProductForUser = async (
+  workspaceId: string,
+  productId: string,
+  changes: ProductChanges,
+) => {
+  assertWorkspaceId(workspaceId);
+  if (!productId || productId.includes("/")) throw new Error("Produto inválido.");
+  await updateProduct(productId, changes);
+};
 
 export const findProductByBarcode = async (
-  userId: string,
-  barcode: string
+  workspaceId: string,
+  barcode: string,
 ): Promise<ProductQuantity | null> => {
-  const ref = collection(db, "users", userId, "products");
-  const q = query(ref, where("barcode", "==", barcode));
-  const snap = await getDocs(q);
+  assertWorkspaceId(workspaceId);
+  const normalizedBarcode = barcode.trim();
+  if (!normalizedBarcode || normalizedBarcode.length > 128) return null;
 
-  if (snap.empty) return null;
+  const reference = collection(db, "users", workspaceId, "products");
+  const barcodeQuery = query(
+    reference,
+    where("barcode", "==", normalizedBarcode),
+  );
+  const snapshot = await getDocs(barcodeQuery);
+  const document = snapshot.docs.find(
+    (candidate) => candidate.data().archived !== true,
+  );
 
-  const docSnap = snap.docs[0];
-  const d = docSnap.data() as DocumentData;
-
-  return {
-    id: docSnap.id,
-    name: d.name,
-    quantity: Number(d.quantity ?? 0),
-    cost: Number(d.cost ?? 0),
-    unitPrice: Number(d.unitPrice ?? 0),
-    price: Number(d.price ?? d.cost ?? d.unitPrice ?? 0),
-    category: d.category ?? "Sem categoria",
-    image: d.image ?? null,
-    minStock: Number(d.minStock ?? 0),
-    barcode: d.barcode ?? "", // <- Garantido
-  };
-};
-
-export const saveBarcodeToProduct = async (
-  userId: string,
-  productId: string,
-  barcode: string
-) => {
-  const ref = doc(db, "users", userId, "products", productId);
-  await updateDoc(ref, { barcode });
-};
-
-// ------------------------------------------------------
-// SCRIPT DE ATUALIZAÇÃO DE PRODUTOS ANTIGOS
-// ------------------------------------------------------
-
-export const ensureAllProductsHaveBarcode = async (userId: string) => {
-  const productsRef = collection(db, "users", userId, "products");
-  const snapshot = await getDocs(productsRef);
-
-  const batch = writeBatch(db);
-  snapshot.docs.forEach((docSnap) => {
-    const data = docSnap.data();
-    if (!("barcode" in data)) {
-      batch.update(doc(db, "users", userId, "products", docSnap.id), {
-        barcode: "",
-      });
-    }
-  });
-
-  await batch.commit();
-  console.log(`Produtos do usuário ${userId} atualizados com barcode.`);
+  return document ? mapProduct(document.id, document.data()) : null;
 };

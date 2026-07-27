@@ -1,180 +1,183 @@
-// src/App.tsx
-import React, { useState, useEffect } from "react"
-import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom"
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+import {
+  FaBoxes,
+  FaChartBar,
+  FaCog,
+  FaExclamationTriangle,
+  FaPlus,
+} from "react-icons/fa";
+import { Sidebar } from "./components/Sidebar";
+import { useAuth } from "./hooks/useAuth";
+import { useProducts } from "./hooks/useProducts";
+import type { AuthSession } from "./contexts/auth-context";
+import { Alertas } from "./pages/Alertas";
+import { Configuracoes } from "./pages/Configuracoes";
+import Estoque from "./pages/Estoque";
+import Home from "./pages/Home";
+import { Login } from "./pages/Login";
+import { NovoProduto } from "./pages/NovoProduto";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Relatorios from "./pages/Relatorios";
+import TermsOfUse from "./pages/TermsOfUse";
+import { sanitizeImageSource } from "./utils/imageValidation";
 
-import { Sidebar } from "./components/Sidebar"
+export const App = () => {
+  const { initializing, session, logout } = useAuth();
 
-import Home from "./pages/Home"
-import Estoque from "./pages/Estoque"
-import Relatorios from "./pages/Relatorios"
-import { Configuracoes } from "./pages/Configuracoes"
-import { NovoProduto } from "./pages/NovoProduto"
-import { Alertas } from "./pages/Alertas"
-import { Login } from "./pages/Login"
-
-import PrivacyPolicy from "./pages/PrivacyPolicy"
-import TermsOfUse from "./pages/TermsOfUse"
-
-import { LoadingProvider } from "./contexts/LoadingContext"
-import { useProducts } from "./hooks/useProducts"
-
-import { FaBoxes, FaPlus, FaChartBar, FaExclamationTriangle, FaCog } from "react-icons/fa"
-
-// =================== APP (ROOT) ===================
-export const App: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!localStorage.getItem("loggedInUser"))
-
-  const [loggedUser, setLoggedUser] = useState<string>(localStorage.getItem("loggedInUser") ?? "usuário")
-
-  const handleLoginSuccess = (login: string) => {
-    localStorage.setItem("loggedInUser", login)
-    setLoggedUser(login)
-    setIsLoggedIn(true)
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem("loggedInUser")
-    setLoggedUser("usuário")
-    setIsLoggedIn(false)
+  if (initializing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-gray-600">
+        Carregando sessão...
+      </div>
+    );
   }
 
   return (
-    <LoadingProvider>
-      <Routes>
-        {/* =================== DESLOGADO =================== */}
-        {!isLoggedIn && (
-          <>
-            <Route path="/" element={<Home />} />
+    <Routes>
+      {!session ? (
+        <>
+          <Route path="/" element={<Home />} />
+          <Route path="/politics-privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-use" element={<TermsOfUse />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </>
+      ) : (
+        <Route
+          path="/*"
+          element={<AppContent session={session} onLogout={logout} />}
+        />
+      )}
+    </Routes>
+  );
+};
 
-            {/* ✅ PÁGINAS BONITAS (TSX) para humanos */}
-            <Route path="/politics-privacy" element={<PrivacyPolicy />} />
-            <Route path="/terms-of-use" element={<TermsOfUse />} />
-
-            {/* ✅ Login */}
-            <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
-
-            {/* ✅ Qualquer outra coisa volta pra home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </>
-        )}
-
-        {/* =================== LOGADO =================== */}
-        {isLoggedIn && (
-          <Route path="/*" element={<AppContent loggedUser={loggedUser} onLogout={handleLogout} />} />
-        )}
-      </Routes>
-    </LoadingProvider>
-  )
+interface AppContentProps {
+  onLogout: () => Promise<void>;
+  session: AuthSession;
 }
 
-// =================== APP INTERNO ===================
-const AppContent: React.FC<{
-  onLogout: () => void
-  loggedUser: string
-}> = ({ onLogout, loggedUser }) => {
-  const navigate = useNavigate()
-  const location = useLocation()
-
-  const [sidebarWidth, setSidebarWidth] = useState(260)
-
-  const [logoSrc, setLogoSrc] = useState(localStorage.getItem("appLogo") ?? "/images/jinjin-banner.png")
-
-  const storedProfile = localStorage.getItem("profileImage")
+const AppContent = ({ onLogout, session }: AppContentProps) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarWidth, setSidebarWidth] = useState(260);
+  const [logoSrc, setLogoSrc] = useState(
+    () =>
+      sanitizeImageSource(
+        localStorage.getItem("appLogo"),
+        "/images/jinjin-banner.png",
+      ),
+  );
   const [profileSrc, setProfileSrc] = useState(
-    storedProfile ? `${storedProfile}?t=${Date.now()}` : "/images/profile-200.jpg"
-  )
+    () =>
+      sanitizeImageSource(
+        localStorage.getItem("profileImage"),
+        "/images/profile-200.jpg",
+      ),
+  );
 
-  const userID = loggedUser
-
-  const { products, loading } = useProducts(userID)
-  const [lowStockCount, setLowStockCount] = useState(0)
-  const [zeroStockCount, setZeroStockCount] = useState(0)
+  const workspaceId = session.workspaceId;
+  const { products, loading } = useProducts(workspaceId);
+  const [lowStockCount, setLowStockCount] = useState(0);
+  const [zeroStockCount, setZeroStockCount] = useState(0);
 
   useEffect(() => {
-    if (loading) return
+    if (loading) return;
 
-    let low = 0
-    let zero = 0
+    let low = 0;
+    let zero = 0;
 
-    products.forEach((p) => {
-      const qty = Number(p.quantity ?? 0)
-      const min = Number(p.minStock ?? 10)
+    products.forEach((product) => {
+      const quantity = Number(product.quantity ?? 0);
+      const minStock = Number(product.minStock ?? 10);
 
-      if (qty === 0) zero++
-      else if (qty > 0 && qty <= min) low++
-    })
+      if (quantity === 0) zero += 1;
+      else if (quantity > 0 && quantity <= minStock) low += 1;
+    });
 
-    setLowStockCount(low)
-    setZeroStockCount(zero)
-  }, [products, loading])
+    setLowStockCount(low);
+    setZeroStockCount(zero);
+  }, [loading, products]);
 
   return (
-    <div className="flex w-full min-h-screen overflow-x-hidden">
-      {/* SIDEBAR */}
+    <div className="flex min-h-screen w-full overflow-x-hidden">
       <Sidebar
         width={sidebarWidth}
         setWidth={setSidebarWidth}
         logoSrc={logoSrc}
         profileSrc={profileSrc}
-        userId={userID}
+        userId={session.login}
         lowStockCount={lowStockCount}
         zeroStockCount={zeroStockCount}
       />
 
-      {/* CONTEÚDO PRINCIPAL */}
-      <div className="flex flex-col flex-1 bg-gray-50">
-        {/* ÁREA SCROLLÁVEL */}
+      <div className="flex flex-1 flex-col bg-gray-50">
         <div className="flex-1 overflow-y-auto">
           <Routes>
             <Route path="/" element={<Navigate to="/estoque" replace />} />
-
-            <Route path="/estoque" element={<Estoque userId={userID} />} />
-            <Route path="/estoque/novoproduto" element={<NovoProduto userId={userID} />} />
-
-            <Route path="/relatorios" element={<Relatorios userId={userID} />} />
-            <Route path="/alertas" element={<Alertas userId={userID} />} />
-
+            <Route path="/estoque" element={<Estoque userId={workspaceId} />} />
+            <Route
+              path="/estoque/novoproduto"
+              element={<NovoProduto userId={workspaceId} />}
+            />
+            <Route
+              path="/relatorios"
+              element={<Relatorios userId={workspaceId} />}
+            />
+            <Route
+              path="/alertas"
+              element={<Alertas userId={workspaceId} />}
+            />
             <Route
               path="/configuracoes"
               element={
                 <Configuracoes
-                  userId={userID}
+                  userId={workspaceId}
                   onLogoChange={(newLogo) => {
-                    setLogoSrc(newLogo)
-                    localStorage.setItem("appLogo", newLogo)
+                    setLogoSrc(newLogo);
+                    localStorage.setItem("appLogo", newLogo);
                   }}
                   onProfileChange={(newProfile) => {
-                    const updated = `${newProfile}?t=${Date.now()}`
-                    setProfileSrc(updated)
-                    localStorage.setItem("profileImage", newProfile)
+                    setProfileSrc(newProfile);
+                    localStorage.setItem("profileImage", newProfile);
                   }}
-                  onLogout={onLogout}
+                  onLogout={() => {
+                    void onLogout();
+                  }}
                 />
               }
             />
-
             <Route path="*" element={<Navigate to="/estoque" replace />} />
           </Routes>
         </div>
 
-        {/* FOOTER MOBILE */}
-        <div className="md:hidden w-full bg-white border-t border-gray-300 flex justify-around items-center py-3 shadow-lg">
-          <MobileItem active={location.pathname === "/estoque"} icon={<FaBoxes size={22} />} label="Estoque" onClick={() => navigate("/estoque")} />
-
+        <div className="flex w-full items-center justify-around border-t border-gray-300 bg-white py-3 shadow-lg md:hidden">
+          <MobileItem
+            active={location.pathname === "/estoque"}
+            icon={<FaBoxes size={22} />}
+            label="Estoque"
+            onClick={() => navigate("/estoque")}
+          />
           <MobileItem
             active={location.pathname === "/estoque/novoproduto"}
             icon={<FaPlus size={22} />}
             label="Novo"
             onClick={() => navigate("/estoque/novoproduto")}
           />
-
           <MobileItem
             active={location.pathname === "/relatorios"}
             icon={<FaChartBar size={22} />}
             label="Relatórios"
             onClick={() => navigate("/relatorios")}
           />
-
           <MobileItem
             active={location.pathname === "/alertas"}
             icon={<FaExclamationTriangle size={22} />}
@@ -183,48 +186,57 @@ const AppContent: React.FC<{
             low={lowStockCount}
             zero={zeroStockCount}
           />
-
-          <MobileItem active={location.pathname === "/configuracoes"} icon={<FaCog size={22} />} label="Config" onClick={() => navigate("/configuracoes")} />
+          <MobileItem
+            active={location.pathname === "/configuracoes"}
+            icon={<FaCog size={22} />}
+            label="Config"
+            onClick={() => navigate("/configuracoes")}
+          />
         </div>
       </div>
     </div>
-  )
+  );
+};
+
+interface MobileItemProps {
+  icon: ReactNode;
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+  low?: number;
+  zero?: number;
 }
 
-// =================== MOBILE ITEM ===================
-function MobileItem({
+const MobileItem = ({
   icon,
   label,
-  active,
+  active = false,
   onClick,
   low = 0,
   zero = 0,
-}: {
-  icon: React.ReactNode
-  label: string
-  active?: boolean
-  onClick: () => void
-  low?: number
-  zero?: number
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`relative flex flex-col items-center px-3 py-1.5 rounded-xl transition-all ${active ? "bg-black text-white" : "text-gray-700 hover:bg-gray-200"
-        }`}
-    >
-      <div className="relative">
-        {icon}
-        <div className="absolute -top-1 -right-2 flex gap-0.5">
-          {low > 0 && (
-            <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{low}</span>
-          )}
-          {zero > 0 && (
-            <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{zero}</span>
-          )}
-        </div>
+}: MobileItemProps) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`relative flex flex-col items-center rounded-xl px-3 py-1.5 transition-all ${
+      active ? "bg-black text-white" : "text-gray-700 hover:bg-gray-200"
+    }`}
+  >
+    <div className="relative">
+      {icon}
+      <div className="absolute -right-2 -top-1 flex gap-0.5">
+        {low > 0 && (
+          <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+            {low}
+          </span>
+        )}
+        {zero > 0 && (
+          <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+            {zero}
+          </span>
+        )}
       </div>
-      <span className="text-xs mt-1">{label}</span>
-    </button>
-  )
-}
+    </div>
+    <span className="mt-1 text-xs">{label}</span>
+  </button>
+);

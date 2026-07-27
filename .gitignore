@@ -1,5 +1,50 @@
+# Dependencies
+node_modules/
+functions/node_modules/
+.npm-cache/
+.lockfile-work/
+
+# Builds, caches and coverage
+dist/
+dist-ssr/
+build/
+coverage/
+.vite/
+*.tsbuildinfo
+vite.config.*.timestamp-*
+
+# Firebase local state and emulator exports
+.firebase/
+.firebase-emulator-data/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+functions/lib/
+functions/.runtimeconfig.json
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+.envrc
+*.local
+.npmrc
+gha-creds-*.json
+cert/
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*service-account*.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
+*google-application-credentials*.json
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,18 +52,22 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# Editor and OS files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
+Thumbs.db
+Desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary and backup files
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
