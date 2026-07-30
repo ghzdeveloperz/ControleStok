@@ -1,20 +1,19 @@
-// src/main.tsx
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
-import DevFixBarcode from "./DevFixBarcode"; // ⬅️ IMPORTA AQUI
-import { LoadingProvider } from "./contexts/LoadingContext";
-
+import { AuthProvider } from "./contexts/AuthProvider";
 import "./index.css";
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <LoadingProvider>
-      <BrowserRouter>
+const root = document.getElementById("root");
+if (!root) throw new Error("Elemento raiz da aplicação não encontrado.");
 
+ReactDOM.createRoot(root).render(
+  <React.StrictMode>
+    <AuthProvider>
+      <BrowserRouter>
         <App />
       </BrowserRouter>
-    </LoadingProvider>
-  </React.StrictMode>
+    </AuthProvider>
+  </React.StrictMode>,
 );

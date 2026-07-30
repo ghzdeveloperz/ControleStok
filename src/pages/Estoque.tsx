@@ -1,7 +1,7 @@
 /* src/pages/Estoque.tsx */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProductCard } from "../components/ProductCard";
 import { ModalAddProduct } from "../components/modals/movements/ModalAddProduct";
 import { ModalRemoveProduct } from "../components/modals/movements/ModalRemoveProduct";
@@ -12,17 +12,13 @@ import { AlertBanner } from "../components/AlertBanner";
 import { removeProductForUser } from "../firebase/firestore/products";
 
 // movements.ts
-import { saveMovementForUser } from "../firebase/firestore/movements";
+import { adjustStockForUser } from "../firebase/firestore/movements";
 
 // categories.ts
-import { getCategoriesForUser, onCategoriesUpdateForUser } from "../firebase/firestore/categories";
+import { onCategoriesUpdateForUser } from "../firebase/firestore/categories";
 
 import { useProducts } from "../hooks/useProducts";
 import { useNavigate } from "react-router-dom";
-
-// Firestore direct updates
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "../firebase/firebase";
 
 // ---------------- UTILS ----------------
 const getLocalDate = () => {
@@ -52,7 +48,8 @@ interface EstoqueProps {
 
 export default function Estoque({ userId }: EstoqueProps) {
   const navigate = useNavigate();
-  const { products: rawProducts, loading } = useProducts(userId);
+  const { products: rawProducts, loading, error: productsError } = useProducts(userId);
+  const alertTimer = useRef<number | null>(null);
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("Todos");
@@ -65,32 +62,19 @@ export default function Estoque({ userId }: EstoqueProps) {
 
   const [categories, setCategories] = useState<string[]>([]);
 
-  // Carrega categorias
   useEffect(() => {
-    let unsub: (() => void) | undefined;
-
-    const fetchCats = async () => {
-      try {
-        const cats = await getCategoriesForUser(userId);
-        setCategories(cats);
-      } catch (err) {
-        console.error("Erro ao buscar categorias:", err);
-        setCategories([]);
-      }
-    };
-
-    fetchCats();
-
-    try {
-      unsub = onCategoriesUpdateForUser(userId, (cats) => setCategories(cats));
-    } catch (err) {
-      console.error("Erro ao inscrever em categorias:", err);
-    }
-
-    return () => {
-      if (typeof unsub === "function") unsub();
-    };
+    return onCategoriesUpdateForUser(userId, setCategories, () => {
+      setCategories([]);
+      setAlert({ message: "Não foi possível carregar as categorias.", type: "error" });
+    });
   }, [userId]);
+
+  useEffect(
+    () => () => {
+      if (alertTimer.current !== null) window.clearTimeout(alertTimer.current);
+    },
+    [],
+  );
 
   // ---------------- NORMALIZAÇÃO ----------------
   const products: ProductModalType[] = rawProducts.map((p) => ({
@@ -101,7 +85,7 @@ export default function Estoque({ userId }: EstoqueProps) {
     unitPrice: Number(p.unitPrice ?? 0),
     category: p.category ?? "Sem categoria",
     minStock: Number(p.minStock ?? 0),
-    image: p.image ?? "/images/placeholder.png",
+    image: p.image ?? "/images/placeholder.svg",
     // FRONT-END gera cost a partir do price se não existir
     cost: Number(p.unitPrice ?? p.price ?? 0),
     barcode: p.barcode ?? "SEM_CODIGO",
@@ -116,8 +100,9 @@ export default function Estoque({ userId }: EstoqueProps) {
   });
 
   const showTimedAlert = (message: string, type: "success" | "error") => {
+    if (alertTimer.current !== null) window.clearTimeout(alertTimer.current);
     setAlert({ message, type });
-    setTimeout(() => setAlert(null), 2000);
+    alertTimer.current = window.setTimeout(() => setAlert(null), 2000);
   };
 
   // ---------------- ADD ----------------
@@ -129,33 +114,25 @@ export default function Estoque({ userId }: EstoqueProps) {
     unitPrice?: number
   ) => {
     const product = products.find((p) => p.id === productId);
-    if (!product) return showTimedAlert("Produto não encontrado.", "error");
+    if (!product) {
+      showTimedAlert("Produto não encontrado.", "error");
+      throw new Error("PRODUCT_NOT_FOUND");
+    }
 
     try {
-      const payload = {
+      await adjustStockForUser(userId, {
         productId,
-        productName: product.name,
         quantity,
         type: "add" as const,
         date,
         cost,
         unitPrice: unitPrice ?? cost,
-      } as any;
-
-      await saveMovementForUser(userId, payload);
-
-      const prodRef = doc(db, "users", userId, "products", productId);
-      await updateDoc(prodRef, {
-        quantity: product.quantity + quantity,
-        cost,
-        unitPrice: unitPrice ?? cost,
-        price: cost,
-      } as any);
+      });
 
       showTimedAlert("Produto adicionado!", "success");
-    } catch (err) {
-      console.error("Erro ao adicionar produto:", err);
+    } catch {
       showTimedAlert("Erro ao adicionar!", "error");
+      throw new Error("STOCK_ADJUST_FAILED");
     }
   };
 
@@ -167,7 +144,10 @@ export default function Estoque({ userId }: EstoqueProps) {
     exitDate?: string
   ) => {
     const product = products.find((p) => p.id === productId);
-    if (!product) return showTimedAlert("Produto não encontrado.", "error");
+    if (!product) {
+      showTimedAlert("Produto não encontrado.", "error");
+      throw new Error("PRODUCT_NOT_FOUND");
+    }
 
     try {
       if (removeEntire) {
@@ -182,26 +162,20 @@ export default function Estoque({ userId }: EstoqueProps) {
           return;
         }
 
-        const payload = {
+        await adjustStockForUser(userId, {
           productId,
-          productName: product.name,
           quantity: qty,
           type: "remove" as const,
           date: exitDate ?? getLocalDate(),
           cost: product.unitPrice,
           unitPrice: product.unitPrice,
-        } as any;
-
-        await saveMovementForUser(userId, payload);
-
-        const prodRef = doc(db, "users", userId, "products", productId);
-        await updateDoc(prodRef, { quantity: product.quantity - qty } as any);
+        });
 
         showTimedAlert("Quantidade removida!", "error");
       }
-    } catch (err) {
-      console.error("Erro ao remover produto:", err);
+    } catch {
       showTimedAlert("Erro ao remover!", "error");
+      throw new Error("STOCK_REMOVE_FAILED");
     }
   };
 
@@ -218,6 +192,11 @@ export default function Estoque({ userId }: EstoqueProps) {
   return (
     <div className="p-4 sm:p-6 min-h-screen overflow-y-auto">
       {alert && <AlertBanner {...alert} onClose={() => setAlert(null)} />}
+      {productsError && (
+        <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          {productsError}
+        </p>
+      )}
 
       <div className="flex justify-between items-center mb-4 flex-wrap">
         <h1 className="text-2xl font-bold text-gray-800">Estoque</h1>
@@ -255,10 +234,18 @@ export default function Estoque({ userId }: EstoqueProps) {
 
       <ProductCard userId={userId} products={filteredProducts} onSelect={(p) => setSelectedProduct(p as ProductModalType)} />
 
-      {showAddModal && <ModalAddProduct products={products} onAdd={handleAddProduct} onClose={() => setShowAddModal(false)} />}
+      {showAddModal && (
+        <ModalAddProduct
+          userId={userId}
+          products={products}
+          onAdd={handleAddProduct}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
 
       {showRemoveModal && (
         <ModalRemoveProduct
+          userId={userId}
           products={products} // ✅ Agora todos produtos têm barcode obrigatório
           onRemove={async (productId: string, qty: number, date?: string) => await handleRemoveProduct(productId, qty, false, date)}
           onClose={() => setShowRemoveModal(false)}

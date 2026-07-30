@@ -1,13 +1,15 @@
 // src/components/modals/ModalRemoveProduct.tsx
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { FaCamera } from "react-icons/fa";
 
 import { AlertBanner } from "../../AlertBanner";
 import { ModalScanner } from "../scanner/ModalScanner";
-import { findProductByBarcode } from "../../../firebase/firestore/products";
-import { auth as firebaseAuth } from "../../../firebase/firebase";
+import {
+  findProductByBarcode,
+  type ProductQuantity,
+} from "../../../firebase/firestore/products";
 
 export interface Product {
   id: string;
@@ -23,15 +25,16 @@ export interface Product {
 }
 
 interface ModalRemoveProductProps {
+  userId: string;
   products: Product[];
   onClose: () => void;
   onRemove: (productId: string, quantity: number, date: string) => Promise<void>;
 }
 
 // ---------------- Normalizações ----------------
-const normalize = (v: any) => String(v ?? "").trim().toLowerCase();
+const normalize = (value: unknown) => String(value ?? "").trim().toLowerCase();
 
-const normalizeProduct = (p: any): Product => ({
+const normalizeProduct = (p: Product | ProductQuantity): Product => ({
   id: String(p.id),
   name: p.name ?? "",
   barcode: String(p.barcode), // obrigatório
@@ -46,6 +49,7 @@ const normalizeProduct = (p: any): Product => ({
 
 // ---------------- COMPONENTE ----------------
 export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
+  userId,
   products,
   onClose,
   onRemove,
@@ -65,17 +69,19 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   const [scannerOpen, setScannerOpen] = useState(false);
 
   // ---------------- FILTRO ----------------
-  const filteredProducts = localProducts.filter((p) => {
+  const filteredProducts = useMemo(() => {
     const term = normalize(search);
-    return normalize(p.name).includes(term) || normalize(p.barcode).includes(term);
-  });
+    return localProducts.filter(
+      (product) =>
+        normalize(product.name).includes(term) ||
+        normalize(product.barcode).includes(term)
+    );
+  }, [localProducts, search]);
 
   useEffect(() => {
-    console.log("ModalRemoveProduct abriu, produtos recebidos (brutos):", products);
-    console.log("Produtos normalizados (localProducts):", localProducts);
     if (filteredProducts.some((p) => String(p.id) === selectedProductId)) return;
     setSelectedProductId(filteredProducts.length ? String(filteredProducts[0].id) : "");
-  }, [search, localProducts]);
+  }, [filteredProducts, selectedProductId]);
 
   // ---------------- ALERT ----------------
   const showAlert = (message: string, type: "success" | "error") => {
@@ -84,27 +90,6 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
   };
 
   // ---------------- GET USER ID ----------------
-  const resolveUserId = (): string => {
-    const tryKeys = ["loggedUser", "loggedInUser", "userId", "loggedUserId", "uid", "user", "currentUserId"];
-    for (const k of tryKeys) {
-      const v = localStorage.getItem(k);
-      if (v) return v.trim();
-    }
-    try {
-      const raw = localStorage.getItem("user");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.uid) return parsed.uid;
-        if (parsed?.id) return parsed.id;
-      }
-    } catch { }
-    try {
-      const firebaseUid = firebaseAuth?.currentUser?.uid;
-      if (firebaseUid) return firebaseUid;
-    } catch { }
-    return "";
-  };
-
   // ---------------- SCANNER ----------------
   const handleDetected = async (barcodeRaw: string) => {
     setScannerOpen(false);
@@ -113,20 +98,17 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
       showAlert("Código inválido.", "error");
       return;
     }
-    const userId = resolveUserId();
     if (!userId) {
       showAlert("Usuário não encontrado. Faça login novamente.", "error");
       return;
     }
     try {
       const product = await findProductByBarcode(userId, barcode);
-      console.log("Produto encontrado pelo barcode (raw):", product);
       if (!product) {
         showAlert("Código não encontrado.", "error");
         return;
       }
       const normalized = normalizeProduct(product);
-      console.log("Produto normalizado após busca pelo barcode:", normalized);
       setSearch(normalized.barcode);
       setSelectedProductId(String(normalized.id));
       const exists = localProducts.some((p) => String(p.id) === normalized.id);
@@ -134,8 +116,7 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
         setLocalProducts((prev) => [...prev, normalized]);
       }
       showAlert(`Produto encontrado: ${normalized.name}`, "success");
-    } catch (err) {
-      console.error(err);
+    } catch {
       showAlert("Erro ao buscar produto.", "error");
     }
   };
@@ -152,22 +133,26 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
     }
     const product = localProducts.find((p) => String(p.id) === selectedProductId);
     if (!product) return;
-    if (Number(quantity) > (product.quantity ?? 0)) {
+    const numericQuantity = Number(quantity);
+    if (!Number.isFinite(numericQuantity) || numericQuantity <= 0) {
+      showAlert("Informe uma quantidade maior que zero.", "error");
+      return;
+    }
+    if (numericQuantity > (product.quantity ?? 0)) {
       showAlert(`Não é possível remover mais que ${product.quantity} unidades.`, "error");
       return;
     }
     setLoading(true);
     const dateStr = exitDate.toISOString().split("T")[0];
     try {
-      await onRemove(selectedProductId, Number(quantity), dateStr);
+      await onRemove(selectedProductId, numericQuantity, dateStr);
       setQuantity("");
       setExitDate(null);
       setSearch("");
       setSelectedProductId(filteredProducts.length ? String(filteredProducts[0].id) : "");
       showAlert("Produto removido com sucesso!", "success");
       onClose();
-    } catch (err) {
-      console.error(err);
+    } catch {
       showAlert("Erro ao remover produto.", "error");
     } finally {
       setLoading(false);
@@ -190,10 +175,11 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
           {/* SELECT */}
           <select value={selectedProductId} onChange={(e) => setSelectedProductId(e.target.value)} className="cursor-pointer px-3 py-2 border rounded w-full mb-3">
             {filteredProducts.length ? (
-              filteredProducts.map((p) => {
-                console.log("Renderizando produto no select:", p);
-                return <option key={p.id} value={String(p.id)}>{p.name} • {p.barcode} • Em estoque: {p.quantity}</option>;
-              })
+              filteredProducts.map((p) => (
+                <option key={p.id} value={String(p.id)}>
+                  {p.name} • {p.barcode} • Em estoque: {p.quantity}
+                </option>
+              ))
             ) : (
               <option value="">Nenhum produto encontrado</option>
             )}
@@ -205,6 +191,7 @@ export const ModalRemoveProduct: React.FC<ModalRemoveProductProps> = ({
             value={quantity === "" ? "" : String(quantity)}
             onChange={(e) => setQuantity(e.target.value === "" ? "" : Number(e.target.value))}
             className="px-3 py-2 border rounded w-full mb-3"
+            min={1}
           />
 
           {/* DATA */}

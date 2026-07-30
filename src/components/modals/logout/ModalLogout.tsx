@@ -4,10 +4,16 @@ import React, { useEffect, useState } from "react";
 interface ModalLogoutProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirmLogout: () => void;
+  onConfirmLogout: () => Promise<void>;
+  isLoading?: boolean;
 }
 
-export const ModalLogout: React.FC<ModalLogoutProps> = ({ isOpen, onClose, onConfirmLogout }) => {
+export const ModalLogout: React.FC<ModalLogoutProps> = ({
+  isOpen,
+  onClose,
+  onConfirmLogout,
+  isLoading = false,
+}) => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -28,7 +34,9 @@ export const ModalLogout: React.FC<ModalLogoutProps> = ({ isOpen, onClose, onCon
         className={`absolute inset-0 bg-black transition-opacity duration-300 ${
           isOpen ? "opacity-30" : "opacity-0"
         }`}
-        onClick={onClose}
+        onClick={() => {
+          if (!isLoading) onClose();
+        }}
       />
 
       {/* Modal com fade + scale */}
@@ -41,18 +49,17 @@ export const ModalLogout: React.FC<ModalLogoutProps> = ({ isOpen, onClose, onCon
         <div className="flex justify-between gap-4">
           <button
             onClick={onClose}
-            className="flex-1 py-2 px-4 rounded-lg bg-gray-200 hover:bg-gray-300 transition cursor-pointer"
+            disabled={isLoading}
+            className="flex-1 py-2 px-4 rounded-lg bg-gray-200 hover:bg-gray-300 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
           >
             Cancelar
           </button>
           <button
-            onClick={() => {
-              onClose();
-              onConfirmLogout();
-            }}
-            className="flex-1 py-2 px-4 rounded-lg bg-red-600 text-white hover:bg-red-700 transition cursor-pointer"
+            onClick={() => void onConfirmLogout()}
+            disabled={isLoading}
+            className="flex-1 py-2 px-4 rounded-lg bg-red-600 text-white hover:bg-red-700 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Sair
+            {isLoading ? "Saindo..." : "Sair"}
           </button>
         </div>
       </div>

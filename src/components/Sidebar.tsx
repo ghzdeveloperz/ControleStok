@@ -9,7 +9,7 @@ import {
   FaExclamationTriangle,
 } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaBarcode } from "react-icons/fa";
+import type { IconType } from "react-icons";
 
 
 interface SidebarProps {
@@ -22,6 +22,10 @@ interface SidebarProps {
   width: number;
   setWidth: (newWidth: number) => void;
 }
+
+const SkeletonBadge = () => (
+  <span className="h-4 w-6 animate-pulse rounded-full bg-gray-300" />
+);
 
 export function Sidebar({
   logoSrc,
@@ -64,10 +68,6 @@ export function Sidebar({
   // Garantir que nunca entre null
   const safeLowStock = typeof lowStockCount === "number" ? lowStockCount : 0;
   const safeZeroStock = typeof zeroStockCount === "number" ? zeroStockCount : 0;
-
-  const SkeletonBadge = () => (
-    <span className="w-6 h-4 bg-gray-300 rounded-full animate-pulse"></span>
-  );
 
   return (
     <>
@@ -250,7 +250,7 @@ export function Sidebar({
 /* ---------------------- ITEM DESKTOP ---------------------- */
 interface SidebarItemProps {
   collapsed: boolean;
-  icon: any;
+  icon: IconType;
   label: string;
   active?: boolean;
   onClick?: () => void;

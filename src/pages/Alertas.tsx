@@ -2,7 +2,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useProducts } from "../hooks/useProducts";
-import { ProductCard, Product, ProductQuantity } from "../components/ProductCard";
+import { ProductCard } from "../components/ProductCard";
+import type { Product, ProductQuantity } from "../components/ProductCard";
 
 interface AlertasProps {
   userId: string;
@@ -15,10 +16,10 @@ export const Alertas: React.FC<AlertasProps> = ({ userId }) => {
   // Mapeia os dados do Firestore para o tipo Product (front-end)
   const mapToProduct = (p: ProductQuantity): Product => ({
     ...p,
-    image: p.image ?? "/images/placeholder.png",
-    price: (p as any).cost ?? 0,
-    unitPrice: (p as any).unitPrice ?? (p as any).cost ?? 0,
-    cost: p.cost ?? 0, // <--- ESSA LINHA RESOLVE
+    image: p.image ?? "/images/placeholder.svg",
+    price: p.cost ?? p.price ?? 0,
+    unitPrice: p.unitPrice ?? p.cost ?? 0,
+    cost: p.cost ?? 0,
   });
 
 

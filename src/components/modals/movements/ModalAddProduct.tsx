@@ -1,16 +1,19 @@
 // src/components/modals/ModalAddProduct.tsx
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { FaCamera } from "react-icons/fa";
 
-import { Product } from "../../ProductCard";
+import type { Product } from "../../ProductCard";
 import { ModalScanner } from "../scanner/ModalScanner";
-import { findProductByBarcode } from "../../../firebase/firestore/products";
-import { auth as firebaseAuth } from "../../../firebase/firebase";
+import {
+  findProductByBarcode,
+  type ProductQuantity,
+} from "../../../firebase/firestore/products";
 import { AlertBanner } from "../../AlertBanner";
 
 interface ModalAddProductProps {
+  userId: string;
   products: Product[];
   onClose: () => void;
   onAdd: (
@@ -19,10 +22,11 @@ interface ModalAddProductProps {
     entryDate: string,
     newAvgCost: number,
     unitPrice: number
-  ) => void;
+  ) => Promise<void>;
 }
 
 export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
+  userId,
   products,
   onClose,
   onAdd,
@@ -43,10 +47,14 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
   const [localProducts, setLocalProducts] = useState<Product[]>(products);
 
   // ---------------- FILTRO ----------------
-  const filteredProducts = localProducts.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filteredProducts = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return localProducts.filter(
+      (product) =>
+        product.name.toLowerCase().includes(normalizedSearch) ||
+        product.barcode?.toLowerCase().includes(normalizedSearch)
+    );
+  }, [localProducts, search]);
 
   const selectedProduct = localProducts.find((p) => p.id === selectedProductId);
 
@@ -54,7 +62,7 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
     if (!filteredProducts.some((p) => p.id === selectedProductId)) {
       setSelectedProductId(filteredProducts.length ? filteredProducts[0].id : "");
     }
-  }, [search, filteredProducts, selectedProductId]);
+  }, [filteredProducts, selectedProductId]);
 
   // ---------------- ALERT ----------------
   const showAlert = (message: string, type: "success" | "error") => {
@@ -96,29 +104,8 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
   };
 
   // ---------------- GET USER ID ----------------
-  const resolveUserId = (): string => {
-    const tryKeys = ["loggedUser", "loggedInUser", "userId", "loggedUserId", "uid", "user", "currentUserId"];
-    for (const k of tryKeys) {
-      const v = localStorage.getItem(k);
-      if (v) return v.trim();
-    }
-    try {
-      const raw = localStorage.getItem("user");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.uid) return parsed.uid;
-        if (parsed?.id) return parsed.id;
-      }
-    } catch { }
-    try {
-      const firebaseUid = firebaseAuth?.currentUser?.uid;
-      if (firebaseUid) return firebaseUid;
-    } catch { }
-    return "";
-  };
-
   // ---------------- NORMALIZAÇÃO ----------------
-  const normalizeProduct = (p: any): Product => ({
+  const normalizeProduct = (p: ProductQuantity): Product => ({
     id: String(p.id),
     name: p.name ?? "",
     barcode: String(p.barcode ?? ""),
@@ -140,7 +127,6 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
       return;
     }
 
-    const userId = resolveUserId();
     if (!userId) {
       showAlert("Usuário não encontrado. Faça login novamente.", "error");
       return;
@@ -161,8 +147,7 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
       setSearch(product.barcode ?? "");
       setSelectedProductId(product.id);
       showAlert(`Produto encontrado: ${product.name}`, "success");
-    } catch (err) {
-      console.error(err);
+    } catch {
       showAlert("Erro ao buscar produto.", "error");
     }
   };
@@ -176,17 +161,30 @@ export const ModalAddProduct: React.FC<ModalAddProductProps> = ({
 
     const qty = Number(quantity);
     const loteCost = keepSamePrice ? prod.unitPrice ?? prod.price : parseCurrency(price);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      showAlert("Informe uma quantidade maior que zero.", "error");
+      return;
+    }
     if (!keepSamePrice && price.trim() === "") return;
+    if (!Number.isFinite(loteCost) || loteCost < 0) {
+      showAlert("Informe um valor válido.", "error");
+      return;
+    }
 
     const dateStr = entryDate.toISOString().split("T")[0];
     const oldQty = prod.quantity ?? 0;
     const oldCost = prod.price ?? 0;
     const newAvgCost = (oldQty * oldCost + qty * loteCost) / (oldQty + qty);
 
-    prod.unitPrice = loteCost;
-
-    onAdd(selectedProductId, qty, dateStr, newAvgCost, loteCost);
-    onClose();
+    setLoading(true);
+    try {
+      await onAdd(selectedProductId, qty, dateStr, newAvgCost, loteCost);
+      onClose();
+    } catch {
+      showAlert("Não foi possível adicionar o estoque.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ---------------- JSX ----------------

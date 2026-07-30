@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "allowlist": [
+    {
+      "scope": "root",
+      "advisoryId": "GHSA-qwww-vcr4-c8h2",
+      "url": "https://github.com/advisories/GHSA-qwww-vcr4-c8h2",
+      "package": "react-router",
+      "allowedInstalledVersions": [
+        "7.18.1"
+      ],
+      "expiresOn": "2026-08-31",
+      "reason": "O advisory afeta exclusivamente o modo RSC e suas Server Actions; este projeto usa apenas a SPA cliente com BrowserRouter e nao habilita as APIs RSC."
+    },
+    {
+      "scope": "functions",
+      "advisoryId": "GHSA-mh99-v99m-4gvg",
+      "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+      "package": "brace-expansion",
+      "allowedInstalledVersions": [
+        "2.1.2"
+      ],
+      "expiresOn": "2026-08-31",
+      "reason": "A cadeia transitiva usa glob internamente e nenhuma Cloud Function fornece entrada controlada pelo atacante para padroes de glob ou brace expansion."
+    },
+    {
+      "scope": "functions",
+      "advisoryId": "GHSA-w5hq-g745-h8pq",
+      "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+      "package": "uuid",
+      "allowedInstalledVersions": [
+        "9.0.1"
+      ],
+      "expiresOn": "2026-08-31",
+      "reason": "A falha exige as APIs de buffer de UUID v3, v5 ou v6; essas variantes e buffers fornecidos pelo chamador nao sao usados pelas Functions."
+    },
+    {
+      "scope": "firebase-cli",
+      "advisoryId": "GHSA-8988-4f7v-96qf",
+      "url": "https://github.com/advisories/GHSA-8988-4f7v-96qf",
+      "package": "@opentelemetry/core",
+      "allowedInstalledVersions": [
+        "1.30.1"
+      ],
+      "expiresOn": "2026-08-31",
+      "reason": "A CLI fixada executa apenas comandos locais e de deploy com argumentos constantes; o pipeline nao recebe nem propaga headers W3C Baggage controlados por usuarios."
+    },
+    {
+      "scope": "firebase-cli",
+      "advisoryId": "GHSA-frvp-7c67-39w9",
+      "url": "https://github.com/advisories/GHSA-frvp-7c67-39w9",
+      "package": "@hono/node-server",
+      "allowedInstalledVersions": [
+        "1.19.17"
+      ],
+      "expiresOn": "2026-08-31",
+      "reason": "O servidor afetado e transitivo da CLI; os emuladores escutam somente em 127.0.0.1 e o workflow nao expoe serve-static a requisicoes externas."
+    },
+    {
+      "scope": "firebase-cli",
+      "advisoryId": "GHSA-mh99-v99m-4gvg",
+      "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+      "package": "brace-expansion",
+      "allowedInstalledVersions": [
+        "1.1.16",
+        "2.1.2"
+      ],
+      "expiresOn": "2026-08-31",
+      "reason": "A CLI recebe somente seletores e caminhos constantes do repositorio validado; nenhuma entrada remota e encaminhada como padrao de glob ou brace expansion."
+    },
+    {
+      "scope": "firebase-cli",
+      "advisoryId": "GHSA-w5hq-g745-h8pq",
+      "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+      "package": "uuid",
+      "allowedInstalledVersions": [
+        "8.3.2",
+        "9.0.1",
+        "14.0.1"
+      ],
+      "expiresOn": "2026-08-31",
+      "reason": "A falha exige APIs UUID v3, v5 ou v6 com buffer fornecido pelo chamador; os comandos fixos da CLI nao fornecem buffers ou variantes UUID controlados externamente."
+    }
+  ]
+}

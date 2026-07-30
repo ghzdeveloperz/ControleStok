@@ -4,14 +4,18 @@ import React, { useState, useEffect, useRef } from "react";
 import { FaTrash, FaPlus, FaUser, FaTags, FaSignOutAlt } from "react-icons/fa";
 import { onCategoriesUpdateForUser } from "../firebase/firestore/categories";
 import { ModalManageCategories } from "../components/modals/categories/ModalManageCategories";
-import { useNavigate } from "react-router-dom";
 import { ModalLogout } from "../components/modals/logout/ModalLogout";
+import {
+  sanitizeImageSource,
+  validateAndReadImage,
+} from "../utils/imageValidation";
+import { getWorkspaceAssetKey } from "../utils/workspaceStorage";
 
 interface ConfiguracoesProps {
   onLogoChange?: (newLogo: string) => void;
   onProfileChange?: (newProfile: string) => void;
-  onLogout?: () => void;
-  userId?: string; // sem fallback
+  onLogout?: () => Promise<void>;
+  userId: string;
 }
 
 export const Configuracoes: React.FC<ConfiguracoesProps> = ({
@@ -20,17 +24,28 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
   onLogout,
   userId,
 }) => {
-  const [logoSrc, setLogoSrc] = useState<string>("/images/jinjin-banner.png");
-  const [profileSrc, setProfileSrc] = useState<string>("/images/profile-200.jpg");
+  const logoStorageKey = getWorkspaceAssetKey(userId, "appLogo");
+  const profileStorageKey = getWorkspaceAssetKey(userId, "profileImage");
+  const [logoSrc, setLogoSrc] = useState<string>(() =>
+    sanitizeImageSource(
+      localStorage.getItem(logoStorageKey),
+      "/images/jinjin-banner.png",
+    ),
+  );
+  const [profileSrc, setProfileSrc] = useState<string>(() =>
+    sanitizeImageSource(
+      localStorage.getItem(profileStorageKey),
+      "/images/profile-200.jpg",
+    ),
+  );
   const [categories, setCategories] = useState<string[]>([]);
   const [showCategoriesModal, setShowCategoriesModal] = useState(false);
   const [activeSection, setActiveSection] = useState<"perfil" | "categoria">("perfil");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const profileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const navigate = useNavigate();
 
   // Carregar categorias do Firebase somente quando userId existir
   useEffect(() => {
@@ -40,82 +55,73 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
     return () => unsub();
   }, [userId]);
 
-  // Carregar imagens do localStorage
-  useEffect(() => {
-    const savedLogo = localStorage.getItem("appLogo");
-    const savedProfile = localStorage.getItem("profileImage");
-
-    if (savedLogo) setLogoSrc(savedLogo);
-    if (savedProfile) setProfileSrc(savedProfile);
-  }, []);
-
   // Upload de banner
-  const handleUploadLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const img = new Image();
-    img.onload = () => {
-      if (img.width !== 1224 || img.height !== 260) {
-        alert("O banner deve ter exatamente 1224x260 px");
-        if (logoInputRef.current) logoInputRef.current.value = "";
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        setLogoSrc(result);
-        localStorage.setItem("appLogo", result);
-        onLogoChange?.(result);
-        if (logoInputRef.current) logoInputRef.current.value = "";
-      };
-      reader.readAsDataURL(file);
-    };
-    img.src = URL.createObjectURL(file);
+    try {
+      const result = await validateAndReadImage(file, {
+        maxBytes: 500 * 1024,
+        exactWidth: 1224,
+        exactHeight: 260,
+      });
+      localStorage.setItem(logoStorageKey, result);
+      setLogoSrc(result);
+      onLogoChange?.(result);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Banner inválido.");
+    } finally {
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
   };
 
   const removeLogo = () => {
     setLogoSrc("/images/jinjin-banner.png");
-    localStorage.removeItem("appLogo");
+    localStorage.removeItem(logoStorageKey);
     onLogoChange?.("/images/jinjin-banner.png");
   };
 
   // Upload de perfil
-  const handleUploadProfile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadProfile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const img = new Image();
-    img.onload = () => {
-      if (img.width !== 200 || img.height !== 200) {
-        alert("A imagem deve ter exatamente 200x200 px");
-        if (profileInputRef.current) profileInputRef.current.value = "";
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        setProfileSrc(result);
-        localStorage.setItem("profileImage", result);
-        onProfileChange?.(result);
-        if (profileInputRef.current) profileInputRef.current.value = "";
-      };
-      reader.readAsDataURL(file);
-    };
-    img.src = URL.createObjectURL(file);
+    try {
+      const result = await validateAndReadImage(file, {
+        maxBytes: 300 * 1024,
+        exactWidth: 200,
+        exactHeight: 200,
+      });
+      localStorage.setItem(profileStorageKey, result);
+      setProfileSrc(result);
+      onProfileChange?.(result);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Imagem de perfil inválida.");
+    } finally {
+      if (profileInputRef.current) profileInputRef.current.value = "";
+    }
   };
 
   const removeProfile = () => {
     setProfileSrc("/images/profile-200.jpg");
-    localStorage.removeItem("profileImage");
+    localStorage.removeItem(profileStorageKey);
     onProfileChange?.("/images/profile-200.jpg");
   };
 
-  // Logout com redirecionamento
-  const handleLogout = () => {
-    onLogout?.();
-    setActiveSection("perfil");
-    navigate("/estoque");
+  const handleLogout = async () => {
+    if (!onLogout || loggingOut) return;
+
+    setLoggingOut(true);
+    try {
+      await onLogout();
+      setShowLogoutConfirm(false);
+      setActiveSection("perfil");
+    } catch {
+      alert("Não foi possível encerrar a sessão. Tente novamente.");
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   return (
@@ -166,8 +172,8 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
                   <input
                     ref={profileInputRef}
                     type="file"
-                    accept="image/*"
-                    onChange={handleUploadProfile}
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => void handleUploadProfile(event)}
                     className="hidden"
                   />
                 </label>
@@ -200,8 +206,8 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
                   <input
                     ref={logoInputRef}
                     type="file"
-                    accept="image/*"
-                    onChange={handleUploadLogo}
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => void handleUploadLogo(event)}
                     className="hidden"
                   />
                 </label>
@@ -246,7 +252,7 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
         onClose={() => setShowCategoriesModal(false)}
         categories={categories}
         setCategories={setCategories}
-        userId={userId ?? "defaultUserId"}
+        userId={userId}
 
       />
 
@@ -255,6 +261,7 @@ export const Configuracoes: React.FC<ConfiguracoesProps> = ({
         isOpen={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
         onConfirmLogout={handleLogout}
+        isLoading={loggingOut}
       />
     </div>
   );

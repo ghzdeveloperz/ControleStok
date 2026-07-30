@@ -17,6 +17,7 @@
 
   import { db } from "../firebase/firebase";
   import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+  import type { DocumentData } from "firebase/firestore";
   import { useProducts } from "../hooks/useProducts";
 
   // ------------------------------------------------------
@@ -50,6 +51,37 @@
     products: ProductDayMovement[];
   }
 
+  const mapMovement = (id: string, data: DocumentData): StockMovement | null => {
+    const type = data.type;
+    const quantity = Number(data.quantity);
+    const cost = Number(data.cost ?? data.unitPrice ?? 0);
+    const unitPrice = Number(data.unitPrice ?? data.cost ?? 0);
+
+    if (
+      (type !== "add" && type !== "remove") ||
+      !Number.isFinite(quantity) ||
+      quantity <= 0 ||
+      !Number.isFinite(cost) ||
+      !Number.isFinite(unitPrice) ||
+      typeof data.date !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(data.date)
+    ) {
+      return null;
+    }
+
+    return {
+      id,
+      productId: typeof data.productId === "string" ? data.productId : "",
+      productName:
+        typeof data.productName === "string" ? data.productName : "Produto",
+      type,
+      quantity,
+      cost,
+      unitPrice,
+      date: data.date,
+    };
+  };
+
   // ------------------------------------------------------
   // UTILITÁRIOS
   // ------------------------------------------------------
@@ -72,6 +104,7 @@
     const [movements, setMovements] = useState<StockMovement[]>([]);
     const { products, loading: loadingProducts } = useProducts(userId);
     const [loadingMovements, setLoadingMovements] = useState(false);
+    const [movementError, setMovementError] = useState<string | null>(null);
 
     const containerRef = useRef<HTMLDivElement | null>(null);
     const dayRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -86,6 +119,7 @@
     // -------------------------------
     useEffect(() => {
       setLoadingMovements(true);
+      setMovementError(null);
 
       const start = new Date(selectedYear, selectedMonth - 1, 1);
       const end = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
@@ -98,14 +132,21 @@
         orderBy("date")
       );
 
-      const unsubscribe = onSnapshot(q, (snap) => {
-        const movs: StockMovement[] = snap.docs.map((doc) => {
-          const data = doc.data() as Omit<StockMovement, "id">;
-          return { id: doc.id, ...data };
-        });
-        setMovements(movs);
-        setLoadingMovements(false);
-      });
+      const unsubscribe = onSnapshot(
+        q,
+        (snap) => {
+          const movs = snap.docs
+            .map((document) => mapMovement(document.id, document.data()))
+            .filter((movement): movement is StockMovement => movement !== null);
+          setMovements(movs);
+          setLoadingMovements(false);
+        },
+        () => {
+          setMovements([]);
+          setMovementError("Não foi possível carregar as movimentações.");
+          setLoadingMovements(false);
+        },
+      );
 
       return () => unsubscribe();
     }, [userId, selectedMonth, selectedYear]);
@@ -274,7 +315,11 @@
           />
         </div>
 
-        {loading ? (
+        {movementError ? (
+          <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {movementError}
+          </p>
+        ) : loading ? (
           <div className="text-gray-500">Carregando...</div>
         ) : !hasData ? (
           // -------------------------------

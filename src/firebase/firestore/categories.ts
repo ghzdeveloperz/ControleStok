@@ -1,24 +1,16 @@
-// src/firebase/firestore/categories.ts
-
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  getDocs,
-  onSnapshot,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, getDocs, onSnapshot } from "firebase/firestore";
+import type { FirestoreError } from "firebase/firestore";
+import { createCategory, deleteCategory } from "../callables";
 import { db } from "../firebase";
 
-// ------------------------------------------------------
-// HELPERS DE SEGURANÇA
-// ------------------------------------------------------
-
-const assertValidUserId = (userId: string) => {
-  if (!userId || typeof userId !== "string" || userId.trim() === "") {
-    console.error("Erro: userId inválido recebido:", userId);
-    throw new Error("Firestore: userId inválido");
+const assertWorkspaceId = (workspaceId: string) => {
+  if (
+    typeof workspaceId !== "string" ||
+    workspaceId.trim().length === 0 ||
+    workspaceId.length > 128 ||
+    workspaceId.includes("/")
+  ) {
+    throw new Error("Workspace inválido.");
   }
 };
 
@@ -28,69 +20,56 @@ const formatCategoryName = (name: string) => {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
 };
 
-// ------------------------------------------------------
-// ADICIONAR CATEGORIA
-// ------------------------------------------------------
-
-export const saveCategoryForUser = async (userId: string, name: string) => {
-  assertValidUserId(userId);
-
+export const saveCategoryForUser = async (
+  workspaceId: string,
+  name: string,
+) => {
+  assertWorkspaceId(workspaceId);
   const formatted = formatCategoryName(name);
-  if (!formatted) throw new Error("Categoria inválida.");
-
-  const ref = collection(db, "users", userId, "categories");
-  await addDoc(ref, { name: formatted });
+  if (!formatted || formatted.length > 80) throw new Error("Categoria inválida.");
+  await createCategory(formatted);
 };
-
-// ------------------------------------------------------
-// LISTAR
-// ------------------------------------------------------
 
 export const getCategoriesForUser = async (
-  userId: string
+  workspaceId: string,
 ): Promise<string[]> => {
-  assertValidUserId(userId);
+  assertWorkspaceId(workspaceId);
+  const reference = collection(db, "users", workspaceId, "categories");
+  const snapshot = await getDocs(reference);
 
-  const ref = collection(db, "users", userId, "categories");
-  const snap = await getDocs(ref);
-
-  return snap.docs.map((d) => d.data().name as string);
+  return snapshot.docs
+    .map((document) => document.data().name)
+    .filter((name): name is string => typeof name === "string")
+    .sort((left, right) => left.localeCompare(right, "pt-BR"));
 };
-
-// ------------------------------------------------------
-// LISTENER (Realtime)
-// ------------------------------------------------------
 
 export const onCategoriesUpdateForUser = (
-  userId: string,
-  callback: (categories: string[]) => void
+  workspaceId: string,
+  callback: (categories: string[]) => void,
+  onError?: (error: FirestoreError) => void,
 ) => {
-  assertValidUserId(userId);
+  assertWorkspaceId(workspaceId);
+  const reference = collection(db, "users", workspaceId, "categories");
 
-  const ref = collection(db, "users", userId, "categories");
-
-  return onSnapshot(ref, (snapshot) => {
-    const list = snapshot.docs.map((d) => d.data().name as string);
-    callback(list);
-  });
+  return onSnapshot(
+    reference,
+    (snapshot) => {
+      const categories = snapshot.docs
+        .map((document) => document.data().name)
+        .filter((name): name is string => typeof name === "string")
+        .sort((left, right) => left.localeCompare(right, "pt-BR"));
+      callback(categories);
+    },
+    onError,
+  );
 };
 
-// ------------------------------------------------------
-// REMOVER
-// ------------------------------------------------------
-
-export const deleteCategoryForUser = async (userId: string, name: string) => {
-  assertValidUserId(userId);
-
+export const deleteCategoryForUser = async (
+  workspaceId: string,
+  name: string,
+) => {
+  assertWorkspaceId(workspaceId);
   const formatted = formatCategoryName(name);
-  if (!formatted) throw new Error("Categoria inválida.");
-
-  const ref = collection(db, "users", userId, "categories");
-  const q = query(ref, where("name", "==", formatted));
-
-  const snap = await getDocs(q);
-
-  for (const d of snap.docs) {
-    await deleteDoc(d.ref);
-  }
+  if (!formatted || formatted.length > 80) throw new Error("Categoria inválida.");
+  await deleteCategory(formatted);
 };

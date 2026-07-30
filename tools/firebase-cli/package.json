@@ -1,0 +1,12 @@
+{
+  "name": "mystoreday-firebase-cli",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Firebase CLI isolada e reproduzivel para CI e emuladores",
+  "scripts": {
+    "check": "node run-firebase.cjs --version"
+  },
+  "dependencies": {
+    "firebase-tools": "15.17.0"
+  }
+}
