@@ -28,6 +28,8 @@ functions/lib/
 functions/.runtimeconfig.json
 
 # Environment files and local secrets
+.env.local
+.env.*.local
 .env
 .env.*
 !.env.example

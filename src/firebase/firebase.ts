@@ -1,46 +1,96 @@
-import { initializeApp } from "firebase/app";
+import type { Analytics } from "firebase/analytics";
+import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import {
-  initializeAppCheck,
-  ReCaptchaEnterpriseProvider,
-} from "firebase/app-check";
-import { connectAuthEmulator, getAuth } from "firebase/auth";
+  connectAuthEmulator,
+  getAuth,
+  GoogleAuthProvider,
+} from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
+import { env } from "../config/env";
+import { initializeFirebaseAppCheck } from "./app-check";
 
-const useLocalEmulators =
-  import.meta.env.DEV &&
-  import.meta.env.VITE_ALLOW_PRODUCTION_FIREBASE !== "true";
+const DEFAULT_FIREBASE_APP_NAME = "[DEFAULT]";
+const FUNCTIONS_REGION = "southamerica-east1";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBepnKOugtn_oiLMYFlQnmUILdpZ2tzDa4",
-  authDomain: "controllstok.firebaseapp.com",
-  projectId: useLocalEmulators ? "demo-mystoreday-local" : "controllstok",
-  storageBucket: useLocalEmulators
-    ? "demo-mystoreday-local.appspot.com"
-    : "controllstok.firebasestorage.app",
-  messagingSenderId: "653898186857",
-  appId: "1:653898186857:web:7c48b21a4cb77d341b62f8",
-  measurementId: "G-K7NRVE83DT",
-};
-
-const app = initializeApp(firebaseConfig);
-const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY?.trim();
-
-if (appCheckSiteKey && !useLocalEmulators) {
-  initializeAppCheck(app, {
-    provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
-    isTokenAutoRefreshEnabled: true,
-  });
+interface FirebaseRuntimeGlobal {
+  __mystoredayEmulatorConnections?: WeakSet<object>;
 }
+
+const existingDefaultApp = getApps().find(
+  (candidate) => candidate.name === DEFAULT_FIREBASE_APP_NAME,
+);
+
+export const app: FirebaseApp = existingDefaultApp
+  ? getApp()
+  : initializeApp(env.firebase);
+
+export const appCheck = initializeFirebaseAppCheck(app);
 
 export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
 export const db = getFirestore(app);
-export const functions = getFunctions(app, "southamerica-east1");
+export const functions = getFunctions(app, FUNCTIONS_REGION);
 
-if (useLocalEmulators) {
-  connectAuthEmulator(auth, "http://127.0.0.1:9099", {
-    disableWarnings: true,
+const connectEmulatorOnce = (service: object, connect: () => void): void => {
+  const runtimeGlobal = globalThis as typeof globalThis & FirebaseRuntimeGlobal;
+  const connections =
+    runtimeGlobal.__mystoredayEmulatorConnections ?? new WeakSet<object>();
+  runtimeGlobal.__mystoredayEmulatorConnections = connections;
+
+  if (connections.has(service)) {
+    return;
+  }
+
+  connect();
+  connections.add(service);
+};
+
+if (env.emulators.enabled) {
+  connectEmulatorOnce(auth, () => {
+    connectAuthEmulator(auth, env.emulators.authUrl, {
+      disableWarnings: true,
+    });
   });
-  connectFirestoreEmulator(db, "127.0.0.1", 8080);
-  connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+  connectEmulatorOnce(db, () => {
+    connectFirestoreEmulator(
+      db,
+      env.emulators.firestoreHost,
+      env.emulators.firestorePort,
+    );
+  });
+  connectEmulatorOnce(functions, () => {
+    connectFunctionsEmulator(
+      functions,
+      env.emulators.functionsHost,
+      env.emulators.functionsPort,
+    );
+  });
 }
+
+const initializeAnalytics = async (): Promise<Analytics | null> => {
+  if (
+    typeof window === "undefined" ||
+    env.emulators.enabled ||
+    !env.firebase.measurementId
+  ) {
+    return null;
+  }
+
+  try {
+    const { getAnalytics, isSupported } = await import("firebase/analytics");
+
+    if (!(await isSupported())) {
+      return null;
+    }
+
+    return getAnalytics(app);
+  } catch {
+    console.warn(
+      "[Firebase] Analytics indisponível neste ambiente; o bootstrap principal continuará normalmente.",
+    );
+    return null;
+  }
+};
+
+export const analyticsPromise = initializeAnalytics();

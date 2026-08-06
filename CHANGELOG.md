@@ -1,0 +1,15 @@
+# CHANGELOG
+
+## [Milestone 001] — Autenticação e App Check Web
+
+- Firebase App Check integrado ao frontend Web.
+- Login migrado para Firebase Authentication com e-mail e senha.
+- Removidos o Custom Token e a Function inexistente `loginWithPassword`.
+- Implementadas persistência de sessão e resolução da empresa ativa pelo UID.
+- Autenticação Web alinhada ao fluxo utilizado pelo aplicativo mobile.
+- Corrigidos erros de CORS, App Check e TypeScript.
+
+Detalhes: [Milestone 001](docs/milestones/milestone-001.md)
+
+---
+

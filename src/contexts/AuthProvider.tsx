@@ -1,94 +1,155 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// caminho: src/contexts/AuthProvider.tsx
+
 import type { ReactNode } from "react";
 import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import {
   browserLocalPersistence,
-  getIdTokenResult,
   onAuthStateChanged,
+  sendEmailVerification,
   setPersistence,
-  signInWithCustomToken,
+  signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
-import type { User } from "firebase/auth";
-import { httpsCallable } from "firebase/functions";
-import { auth, functions } from "../firebase/firebase";
+
+import {
+  AuthSessionError,
+  resolveAuthSession,
+} from "../firebase/auth/resolveAuthSession";
+import { auth } from "../firebase/firebase";
 import {
   AuthContext,
   type AuthContextValue,
   type AuthSession,
 } from "./auth-context";
 
-interface LoginRequest {
-  login: string;
-  password: string;
-}
-
-interface LoginResponse {
-  token: string;
-  workspaceId: string;
-  login: string;
-  memberRole: string;
-}
-
-const loginWithPassword = httpsCallable<LoginRequest, LoginResponse>(
-  functions,
-  "loginWithPassword",
-  { limitedUseAppCheckTokens: true },
-);
-
-const VALID_ROLES = new Set(["owner", "admin", "manager", "member", "viewer"]);
-
-const readSession = async (user: User | null): Promise<AuthSession | null> => {
-  if (!user) return null;
-
-  const token = await getIdTokenResult(user);
-  if (token.signInProvider !== "custom") return null;
-
-  const workspaceId = token.claims.workspaceId;
-  const login = token.claims.login;
-  const memberRole = token.claims.memberRole;
-  const credentialId = token.claims.credentialId;
-
-  if (
-    typeof workspaceId !== "string" ||
-    typeof login !== "string" ||
-    typeof memberRole !== "string" ||
-    typeof credentialId !== "string" ||
-    !/^[a-f0-9]{64}$/u.test(credentialId) ||
-    !VALID_ROLES.has(memberRole)
-  ) {
-    return null;
-  }
-
-  return { workspaceId, login, memberRole };
+const normalizeEmail = (
+  value: string,
+): string => {
+  return value
+    .trim()
+    .toLowerCase();
 };
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<AuthSession | null>(null);
-  const [initializing, setInitializing] = useState(true);
+export const AuthProvider = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const [
+    session,
+    setSession,
+  ] = useState<AuthSession | null>(
+    null,
+  );
+
+  const [
+    initializing,
+    setInitializing,
+  ] = useState(true);
+
+  /**
+   * Evita que uma resolução antiga sobrescreva uma autenticação,
+   * logout ou troca de usuário mais recente.
+   */
   const authSequence = useRef(0);
+
+  /**
+   * O login resolve a sessão diretamente.
+   *
+   * Enquanto ele acontece, ignoramos o callback intermediário do
+   * onAuthStateChanged para não executar duas resoluções concorrentes.
+   */
+  const authMutationInProgress =
+    useRef(false);
 
   useEffect(() => {
     let active = true;
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      const sequence = ++authSequence.current;
-
-      try {
-        const restoredSession = await readSession(user);
-        if (!active || sequence !== authSequence.current) return;
-
-        if (user && !restoredSession) {
-          await signOut(auth);
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (user) => {
+        if (
+          authMutationInProgress.current
+        ) {
           return;
         }
 
-        setSession(restoredSession);
-      } catch {
-        if (active && sequence === authSequence.current) setSession(null);
-      } finally {
-        if (active && sequence === authSequence.current) setInitializing(false);
-      }
-    });
+        const sequence =
+          ++authSequence.current;
+
+        void (async () => {
+          try {
+            if (!user) {
+              if (
+                !active ||
+                sequence !==
+                authSequence.current
+              ) {
+                return;
+              }
+
+              setSession(null);
+              return;
+            }
+
+            const restoredSession =
+              await resolveAuthSession(
+                user,
+              );
+
+            if (
+              !active ||
+              sequence !==
+              authSequence.current ||
+              auth.currentUser?.uid !==
+              user.uid
+            ) {
+              return;
+            }
+
+            setSession(
+              restoredSession,
+            );
+          } catch {
+            if (
+              !active ||
+              sequence !==
+              authSequence.current
+            ) {
+              return;
+            }
+
+            setSession(null);
+
+            /*
+             * Uma autenticação sem workspace válido não pode permanecer
+             * aberta. A identidade Firebase é encerrada para evitar que
+             * componentes renderizem com uma sessão parcial.
+             */
+            try {
+              await signOut(auth);
+            } catch {
+              // O estado local já foi invalidado.
+            }
+          } finally {
+            if (
+              active &&
+              sequence ===
+              authSequence.current
+            ) {
+              setInitializing(false);
+            }
+          }
+        })();
+      },
+    );
 
     return () => {
       active = false;
@@ -96,45 +157,171 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const login = useCallback(async (rawLogin: string, password: string) => {
-    ++authSequence.current;
-    const normalizedLogin = rawLogin.trim().toLowerCase();
-    const response = await loginWithPassword({
-      login: normalizedLogin,
-      password,
-    });
+  const login = useCallback(
+    async (
+      rawEmail: string,
+      password: string,
+    ): Promise<void> => {
+      const email =
+        normalizeEmail(rawEmail);
 
-    const { token } = response.data;
-    if (typeof token !== "string" || token.length === 0) {
-      throw new Error("AUTH_INVALID_RESPONSE");
-    }
+      if (
+        email.length === 0 ||
+        password.length === 0
+      ) {
+        throw new AuthSessionError(
+          "AUTH_INVALID_CREDENTIALS",
+          "E-mail e senha são obrigatórios.",
+        );
+      }
 
-    await setPersistence(auth, browserLocalPersistence);
-    const credential = await signInWithCustomToken(auth, token);
+      const sequence =
+        ++authSequence.current;
 
-    const authenticatedSession = await readSession(credential.user);
-    if (
-      !authenticatedSession ||
-      auth.currentUser?.uid !== credential.user.uid
-    ) {
-      await signOut(auth);
-      throw new Error("AUTH_INVALID_SESSION");
-    }
+      authMutationInProgress.current =
+        true;
 
-    setSession(authenticatedSession);
-    setInitializing(false);
-  }, []);
+      try {
+        /*
+         * A persistência é configurada antes do login.
+         * Nenhuma senha ou token é salvo manualmente pelo aplicativo.
+         */
+        await setPersistence(
+          auth,
+          browserLocalPersistence,
+        );
 
-  const logout = useCallback(async () => {
-    ++authSequence.current;
-    await signOut(auth);
-    setSession(null);
-  }, []);
+        const credential =
+          await signInWithEmailAndPassword(
+            auth,
+            email,
+            password,
+          );
 
-  const value = useMemo<AuthContextValue>(
-    () => ({ initializing, session, login, logout }),
-    [initializing, login, logout, session],
+        /*
+         * Recarrega o usuário para evitar decidir com um estado antigo
+         * de emailVerified.
+         */
+        await credential.user.reload();
+
+        const authenticatedUser =
+          auth.currentUser;
+
+        if (
+          !authenticatedUser ||
+          authenticatedUser.uid !==
+          credential.user.uid
+        ) {
+          throw new AuthSessionError(
+            "AUTH_INVALID_SESSION",
+            "A sessão autenticada não pôde ser confirmada.",
+          );
+        }
+
+        if (
+          !authenticatedUser.emailVerified
+        ) {
+          /*
+           * Mesmo comportamento do aplicativo Flutter:
+           * tenta reenviar a verificação, mas uma falha no reenvio
+           * não altera a decisão de bloquear o acesso.
+           */
+          try {
+            await sendEmailVerification(
+              authenticatedUser,
+            );
+          } catch {
+            // Rate limit ou reenvio indisponível não libera a conta.
+          }
+
+          throw new AuthSessionError(
+            "AUTH_EMAIL_NOT_VERIFIED",
+            "O e-mail da conta ainda não foi verificado.",
+          );
+        }
+
+        const authenticatedSession =
+          await resolveAuthSession(
+            authenticatedUser,
+          );
+
+        if (
+          sequence !==
+          authSequence.current ||
+          auth.currentUser?.uid !==
+          authenticatedUser.uid
+        ) {
+          throw new AuthSessionError(
+            "AUTH_INVALID_SESSION",
+            "A sessão foi alterada durante o login.",
+          );
+        }
+
+        setSession(
+          authenticatedSession,
+        );
+
+        setInitializing(false);
+      } catch (error) {
+        try {
+          await signOut(auth);
+        } catch {
+          // A sessão local será removida mesmo se o logout remoto falhar.
+        }
+
+        setSession(null);
+        setInitializing(false);
+
+        throw error;
+      } finally {
+        authMutationInProgress.current =
+          false;
+      }
+    },
+    [],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const logout = useCallback(
+    async (): Promise<void> => {
+      ++authSequence.current;
+
+      authMutationInProgress.current =
+        true;
+
+      try {
+        await signOut(auth);
+      } finally {
+        setSession(null);
+        setInitializing(false);
+
+        authMutationInProgress.current =
+          false;
+      }
+    },
+    [],
+  );
+
+  const value =
+    useMemo<AuthContextValue>(
+      () => ({
+        initializing,
+        session,
+        login,
+        logout,
+      }),
+      [
+        initializing,
+        login,
+        logout,
+        session,
+      ],
+    );
+
+  return (
+    <AuthContext.Provider
+      value={value}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
