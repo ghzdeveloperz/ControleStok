@@ -13,3 +13,23 @@ Detalhes: [Milestone 001](docs/milestones/milestone-001.md)
 
 ---
 
+## Milestone 002
+
+- Refatoração Clean Architecture da autenticação.
+- Nova rota oficial `/sign-up`.
+- Cadastro progressivo por e-mail.
+- Verificação antes da definição de senha.
+- Reenvio, cooldown e troca de e-mail.
+- Recuperação do cadastro pendente.
+- Preparação do onboarding empresarial.
+- Integração com Firebase App Check.
+- Ajustes de CSP e Firebase Hosting.
+- Publicação em domínio próprio.
+- Correções de TypeScript e build de produção.
+
+Detalhes: [Milestone 002](docs/milestones/milestone-002.md)
+
+---
+
+
+

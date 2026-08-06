@@ -1,0 +1,996 @@
+@import "../tokens/colors.css";
+@import "../tokens/spacing.css";
+@import "../tokens/radius.css";
+@import "../tokens/typography.css";
+@import "../tokens/motion.css";
+@import "./auth.css";
+
+/* =========================================================
+   Base global
+   ========================================================= */
+
+:root {
+  color: var(--msd-on-surface);
+  background: var(--msd-surface);
+  font-family: var(--msd-font-family);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100dvh;
+  margin: 0;
+  background: var(--msd-surface);
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--msd-font-family);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgb(85 103 199 / 0.28);
+  outline-offset: 2px;
+}
+
+.msd-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* =========================================================
+   Loader global
+   ========================================================= */
+
+.msd-page-loader {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--msd-space-xl);
+  background:
+    radial-gradient(
+      circle at 18% 12%,
+      rgb(85 103 199 / 0.12),
+      transparent 34rem
+    ),
+    var(--msd-surface);
+}
+
+.msd-page-loader__content {
+  display: grid;
+  justify-items: center;
+  gap: var(--msd-space-md);
+  color: var(--msd-on-surface-variant);
+  font-size: var(--msd-text-body-md-size);
+  font-weight: 600;
+}
+
+.msd-spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: msd-spin 700ms linear infinite;
+}
+
+@keyframes msd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================================
+   Botões
+   ========================================================= */
+
+.msd-button {
+  min-height: 3.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--msd-space-xs);
+  padding: 0.8rem 1.2rem;
+  border: 1px solid transparent;
+  border-radius: var(--msd-radius-sm);
+  cursor: pointer;
+  font-size: var(--msd-text-label-lg-size);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  transition:
+    transform var(--msd-motion-fast) var(--msd-ease-standard),
+    background-color var(--msd-motion-fast) var(--msd-ease-standard),
+    border-color var(--msd-motion-fast) var(--msd-ease-standard),
+    box-shadow var(--msd-motion-fast) var(--msd-ease-standard),
+    color var(--msd-motion-fast) var(--msd-ease-standard);
+}
+
+.msd-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.msd-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+}
+
+.msd-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.msd-button--full {
+  width: 100%;
+}
+
+.msd-button--primary {
+  color: var(--msd-white);
+  background: linear-gradient(
+    135deg,
+    var(--msd-brand-900),
+    var(--msd-brand-700)
+  );
+  box-shadow: 0 10px 22px rgb(27 33 71 / 0.18);
+}
+
+.msd-button--primary:hover:not(:disabled) {
+  background: linear-gradient(
+    135deg,
+    var(--msd-brand-800),
+    var(--msd-brand-600)
+  );
+  box-shadow: 0 12px 26px rgb(27 33 71 / 0.22);
+}
+
+.msd-button--secondary {
+  color: var(--msd-on-surface);
+  background: var(--msd-surface-container);
+  border-color: var(--msd-outline-variant);
+  box-shadow: 0 8px 20px rgb(16 24 40 / 0.06);
+}
+
+.msd-button--secondary:hover:not(:disabled) {
+  border-color: var(--msd-outline);
+  background: var(--msd-surface-container-high);
+}
+
+.msd-button--ghost {
+  min-height: 2.5rem;
+  color: var(--msd-primary);
+  background: transparent;
+}
+
+.msd-button--ghost:hover:not(:disabled) {
+  background: var(--msd-primary-soft);
+}
+
+.msd-button--danger {
+  color: var(--msd-white);
+  background: var(--msd-error);
+}
+
+.msd-button--danger:hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+/* =========================================================
+   Campos de formulário
+   ========================================================= */
+
+.msd-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.msd-field__label {
+  color: var(--msd-on-surface);
+  font-size: var(--msd-text-label-lg-size);
+  font-weight: 700;
+}
+
+.msd-field__control {
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+  gap: var(--msd-space-sm);
+  padding: 0 1rem;
+  border: 1px solid rgb(208 213 221 / 0.82);
+  border-radius: var(--msd-radius-sm);
+  background: var(--msd-surface-container);
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.03);
+  transition:
+    border-color var(--msd-motion-fast) var(--msd-ease-standard),
+    box-shadow var(--msd-motion-fast) var(--msd-ease-standard),
+    background-color var(--msd-motion-fast) var(--msd-ease-standard);
+}
+
+.msd-field__control:focus-within {
+  border-color: var(--msd-brand-500);
+  box-shadow: 0 0 0 4px rgb(85 103 199 / 0.12);
+}
+
+.msd-field__control--error {
+  border-color: var(--msd-error);
+}
+
+.msd-field__icon {
+  flex: 0 0 auto;
+  color: var(--msd-neutral-500);
+}
+
+.msd-field__input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--msd-on-surface);
+  font-size: var(--msd-text-body-lg-size);
+  font-weight: 550;
+}
+
+.msd-field__input::placeholder {
+  color: var(--msd-neutral-400);
+}
+
+.msd-field__input:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+}
+
+select.msd-field__input {
+  cursor: pointer;
+}
+
+.msd-field__action {
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--msd-radius-pill);
+  background: transparent;
+  color: var(--msd-neutral-600);
+  cursor: pointer;
+}
+
+.msd-field__action:hover {
+  background: var(--msd-neutral-100);
+}
+
+.msd-field__hint,
+.msd-field__error {
+  margin: 0;
+  font-size: var(--msd-text-body-sm-size);
+  line-height: 1.4;
+}
+
+.msd-field__hint {
+  color: var(--msd-on-surface-variant);
+}
+
+.msd-field__error {
+  color: var(--msd-error);
+  font-weight: 650;
+}
+
+/* =========================================================
+   Feedback
+   ========================================================= */
+
+.msd-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--msd-space-sm);
+  padding: 0.9rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--msd-radius-sm);
+  font-size: var(--msd-text-body-md-size);
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.msd-feedback > svg {
+  flex: 0 0 auto;
+  margin-top: 0.05rem;
+}
+
+.msd-feedback--error {
+  color: var(--msd-on-error-container);
+  background: var(--msd-error-container);
+  border-color: rgb(180 35 24 / 0.16);
+}
+
+.msd-feedback--success {
+  color: var(--msd-on-success-container);
+  background: var(--msd-success-container);
+  border-color: rgb(6 118 71 / 0.16);
+}
+
+.msd-feedback--warning {
+  color: var(--msd-on-warning-container);
+  background: var(--msd-warning-container);
+  border-color: rgb(181 71 8 / 0.16);
+}
+
+.msd-feedback--info {
+  color: var(--msd-on-info-container);
+  background: var(--msd-info-container);
+  border-color: rgb(23 92 211 / 0.16);
+}
+
+/* =========================================================
+   Marca
+   ========================================================= */
+
+.msd-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--msd-space-sm);
+  color: inherit;
+  text-decoration: none;
+}
+
+.msd-brand__mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.75rem;
+  color: var(--msd-white);
+  background: linear-gradient(
+    145deg,
+    var(--msd-brand-900),
+    var(--msd-brand-600)
+  );
+  box-shadow: 0 8px 20px rgb(27 33 71 / 0.16);
+}
+
+.msd-brand__name {
+  color: var(--msd-on-surface);
+  font-size: 1.05rem;
+  font-weight: 850;
+  letter-spacing: -0.035em;
+}
+
+/* =========================================================
+   Força da senha
+   ========================================================= */
+
+.msd-password-strength {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.msd-password-strength__bars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.msd-password-strength__bar {
+  height: 0.3rem;
+  border-radius: var(--msd-radius-pill);
+  background: var(--msd-neutral-200);
+}
+
+.msd-password-strength__bar--active[data-level="1"] {
+  background: var(--msd-error);
+}
+
+.msd-password-strength__bar--active[data-level="2"] {
+  background: var(--msd-warning);
+}
+
+.msd-password-strength__bar--active[data-level="3"],
+.msd-password-strength__bar--active[data-level="4"] {
+  background: var(--msd-success);
+}
+
+.msd-password-strength__label {
+  margin: 0;
+  color: var(--msd-on-surface-variant);
+  font-size: var(--msd-text-body-sm-size);
+}
+
+/* =========================================================
+   Escolha entre entrar e criar conta
+   ========================================================= */
+
+.msd-auth-choice {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.14fr) minmax(23rem, 0.86fr);
+  background: var(--msd-surface);
+}
+
+.msd-auth-choice__showcase {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--msd-space-xl);
+  padding: clamp(1.25rem, 4vw, 4rem);
+  color: var(--msd-white);
+  background:
+    radial-gradient(
+      circle at 12% 6%,
+      rgb(166 178 228 / 0.42),
+      transparent 28rem
+    ),
+    linear-gradient(
+      145deg,
+      #11152f,
+      #1b2147 50%,
+      #3e4ea7
+    );
+}
+
+.msd-auth-choice__showcase::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      rgb(255 255 255 / 0.035) 1px,
+      transparent 1px
+    );
+  background-size: 3rem 3rem;
+  mask-image: radial-gradient(
+    circle at 42% 44%,
+    #000 0%,
+    transparent 78%
+  );
+}
+
+.msd-auth-choice__showcase > * {
+  position: relative;
+  z-index: 1;
+}
+
+.msd-auth-choice__showcase .msd-brand__name {
+  color: var(--msd-white);
+}
+
+.msd-auth-choice__showcase .msd-brand__mark {
+  color: var(--msd-brand-900);
+  background: var(--msd-white);
+}
+
+.msd-auth-choice__slides {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+
+.msd-auth-choice__slide {
+  width: min(100%, 46rem);
+  display: grid;
+  gap: var(--msd-space-xl);
+  animation:
+    msd-slide-enter
+    var(--msd-motion-emphasized)
+    var(--msd-ease-emphasized);
+}
+
+@keyframes msd-slide-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.8rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.msd-auth-choice__preview {
+  position: relative;
+  min-height: clamp(17rem, 45vw, 31rem);
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: clamp(1.4rem, 3vw, 2.25rem);
+  background: rgb(255 255 255 / 0.09);
+  box-shadow: 0 28px 70px rgb(0 0 0 / 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.msd-auth-choice__preview-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+}
+
+.msd-auth-choice__preview-nav {
+  padding: 1rem 0.8rem;
+  border-right: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(8 12 30 / 0.3);
+}
+
+.msd-auth-choice__preview-dots {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.msd-auth-choice__preview-dot {
+  height: 2.8rem;
+  border-radius: 0.85rem;
+  background: rgb(255 255 255 / 0.09);
+}
+
+.msd-auth-choice__preview-dot:first-child {
+  background: rgb(255 255 255 / 0.84);
+}
+
+.msd-auth-choice__preview-content {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.msd-auth-choice__preview-heading {
+  width: 48%;
+  height: 1.2rem;
+  border-radius: var(--msd-radius-pill);
+  background: rgb(255 255 255 / 0.85);
+}
+
+.msd-auth-choice__preview-subheading {
+  width: 66%;
+  height: 0.65rem;
+  border-radius: var(--msd-radius-pill);
+  background: rgb(255 255 255 / 0.28);
+}
+
+.msd-auth-choice__preview-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.msd-auth-choice__preview-card {
+  min-height: 6.4rem;
+  padding: 0.9rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 0.1);
+}
+
+.msd-auth-choice__preview-chart {
+  min-height: 9rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 1rem;
+  background:
+    linear-gradient(
+      to top,
+      rgb(255 255 255 / 0.16),
+      transparent
+    ),
+    repeating-linear-gradient(
+      to right,
+      transparent 0 12%,
+      rgb(255 255 255 / 0.05) 12% 12.4%
+    );
+}
+
+.msd-auth-choice__copy h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.6rem);
+  font-weight: 760;
+  line-height: 1.02;
+  letter-spacing: -0.06em;
+}
+
+.msd-auth-choice__copy p {
+  max-width: 38rem;
+  margin: 0.75rem 0 0;
+  color: rgb(255 255 255 / 0.68);
+  font-size: clamp(0.9rem, 1.5vw, 1.05rem);
+  line-height: 1.6;
+}
+
+.msd-auth-choice__indicators {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.msd-auth-choice__indicator {
+  width: 0.6rem;
+  height: 0.6rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--msd-radius-pill);
+  background: rgb(255 255 255 / 0.28);
+  cursor: pointer;
+  transition:
+    width
+    var(--msd-motion-standard)
+    var(--msd-ease-standard);
+}
+
+.msd-auth-choice__indicator:hover {
+  background: rgb(255 255 255 / 0.52);
+}
+
+.msd-auth-choice__indicator--active {
+  width: 1.8rem;
+  background: var(--msd-white);
+}
+
+.msd-auth-choice__access {
+  display: grid;
+  place-items: center;
+  padding: clamp(1.25rem, 5vw, 5rem);
+}
+
+.msd-auth-choice__access-card {
+  width: min(100%, 30rem);
+  display: grid;
+  gap: var(--msd-space-xl);
+}
+
+.msd-auth-choice__access-card h2 {
+  margin: 0;
+  color: var(--msd-on-surface);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 780;
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+}
+
+.msd-auth-choice__access-card > p,
+.msd-auth-choice__access-card > div > p {
+  margin: 0.65rem 0 0;
+  color: var(--msd-on-surface-variant);
+  line-height: 1.6;
+}
+
+.msd-auth-choice__buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--msd-space-sm);
+}
+
+/* =========================================================
+   Páginas de estado
+   ========================================================= */
+
+.msd-state-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--msd-space-xl);
+  background:
+    radial-gradient(
+      circle at 20% 0%,
+      rgb(85 103 199 / 0.11),
+      transparent 26rem
+    ),
+    var(--msd-surface);
+}
+
+.msd-state-card {
+  width: min(100%, 34rem);
+  display: grid;
+  justify-items: center;
+  gap: var(--msd-space-md);
+  padding: clamp(1.5rem, 5vw, 3rem);
+  border: 1px solid var(--msd-outline-variant);
+  border-radius: var(--msd-radius-xl);
+  background: var(--msd-surface-container);
+  box-shadow: 0 24px 60px rgb(16 24 40 / 0.1);
+  text-align: center;
+}
+
+.msd-state-card__icon {
+  width: 4.5rem;
+  height: 4.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--msd-primary);
+  background: var(--msd-primary-soft);
+}
+
+.msd-state-card h1 {
+  margin: 0;
+  color: var(--msd-on-surface);
+  font-size: clamp(1.7rem, 4vw, 2.2rem);
+  font-weight: 780;
+  letter-spacing: -0.045em;
+}
+
+.msd-state-card p {
+  margin: 0;
+  color: var(--msd-on-surface-variant);
+  line-height: 1.6;
+}
+
+.msd-state-card strong {
+  color: var(--msd-on-surface);
+}
+
+/* =========================================================
+   Cadastro da empresa
+   ========================================================= */
+
+.msd-company-form {
+  display: grid;
+  gap: var(--msd-space-md);
+}
+
+.msd-account-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--msd-space-sm);
+}
+
+.msd-account-type-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  border: 1px solid var(--msd-outline-variant);
+  border-radius: var(--msd-radius-sm);
+  background: var(--msd-surface-container);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--msd-motion-fast),
+    background-color var(--msd-motion-fast),
+    box-shadow var(--msd-motion-fast),
+    transform var(--msd-motion-fast);
+}
+
+.msd-account-type-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--msd-brand-400);
+}
+
+.msd-account-type-card--active {
+  border-color: var(--msd-brand-600);
+  background: var(--msd-brand-50);
+  box-shadow: 0 0 0 3px rgb(85 103 199 / 0.1);
+}
+
+.msd-account-type-card strong {
+  color: var(--msd-on-surface);
+  font-size: var(--msd-text-body-md-size);
+}
+
+.msd-account-type-card span {
+  color: var(--msd-on-surface-variant);
+  font-size: var(--msd-text-body-sm-size);
+  line-height: 1.4;
+}
+
+.msd-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--msd-space-md);
+}
+
+.msd-form-grid__full {
+  grid-column: 1 / -1;
+}
+
+.msd-check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--msd-space-sm);
+  color: var(--msd-on-surface-variant);
+  font-size: var(--msd-text-body-sm-size);
+  line-height: 1.5;
+}
+
+.msd-check-row input {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
+  margin-top: 0.12rem;
+  accent-color: var(--msd-primary);
+}
+
+.msd-check-row a {
+  color: var(--msd-primary);
+  font-weight: 750;
+}
+
+/* =========================================================
+   Dark mode global
+   ========================================================= */
+
+.dark body {
+  background: var(--msd-surface);
+}
+
+.dark .msd-field__action:hover {
+  background: var(--msd-surface-container-highest);
+}
+
+.dark .msd-auth-choice__access {
+  background: var(--msd-surface);
+}
+
+.dark .msd-auth-choice__access-card {
+  color: var(--msd-on-surface);
+}
+
+.dark .msd-account-type-card--active {
+  border-color: var(--msd-brand-400);
+  background: rgb(85 103 199 / 0.12);
+}
+
+.dark .msd-state-card {
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.28);
+}
+
+/* =========================================================
+   Responsividade
+   ========================================================= */
+
+@media (max-width: 960px) {
+  .msd-auth-choice {
+    grid-template-columns: 1fr;
+  }
+
+  .msd-auth-choice__showcase {
+    min-height: 28rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .msd-auth-choice__showcase {
+    min-height: 23rem;
+    padding: 1rem;
+  }
+
+  .msd-auth-choice__preview {
+    min-height: 13rem;
+  }
+
+  .msd-auth-choice__preview-grid {
+    grid-template-columns: 3.6rem 1fr;
+  }
+
+  .msd-auth-choice__preview-nav {
+    padding: 0.75rem 0.55rem;
+  }
+
+  .msd-auth-choice__preview-dot {
+    height: 2.2rem;
+  }
+
+  .msd-auth-choice__preview-content {
+    gap: 0.65rem;
+    padding: 1rem;
+  }
+
+  .msd-auth-choice__preview-cards {
+    gap: 0.5rem;
+  }
+
+  .msd-auth-choice__preview-card {
+    min-height: 4rem;
+    padding: 0.5rem;
+  }
+
+  .msd-auth-choice__preview-chart {
+    min-height: 5rem;
+  }
+
+  .msd-auth-choice__copy h1 {
+    font-size: 1.8rem;
+  }
+
+  .msd-auth-choice__copy p {
+    font-size: 0.875rem;
+  }
+
+  .msd-auth-choice__access {
+    padding: 1.5rem 1rem 2rem;
+  }
+
+  .msd-auth-choice__buttons,
+  .msd-account-type-grid,
+  .msd-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .msd-form-grid__full {
+    grid-column: auto;
+  }
+
+  .msd-state-page {
+    padding: 1rem;
+  }
+
+  .msd-state-card {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .msd-button {
+    min-height: 3rem;
+    padding-inline: 1rem;
+  }
+
+  .msd-field__control {
+    min-height: 3.1rem;
+    padding-inline: 0.85rem;
+  }
+
+  .msd-auth-choice__access-card h2 {
+    font-size: 1.85rem;
+  }
+
+  .msd-state-card__icon {
+    width: 4rem;
+    height: 4rem;
+  }
+}

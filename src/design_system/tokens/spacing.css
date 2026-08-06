@@ -1,0 +1,11 @@
+:root {
+  --msd-space-xxs: 0.25rem;
+  --msd-space-xs: 0.5rem;
+  --msd-space-sm: 0.75rem;
+  --msd-space-md: 1rem;
+  --msd-space-lg: 1.25rem;
+  --msd-space-xl: 1.5rem;
+  --msd-space-xxl: 1.75rem;
+  --msd-space-xxxl: 2rem;
+  --msd-space-section: 2.5rem;
+}

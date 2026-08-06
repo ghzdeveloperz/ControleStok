@@ -25,14 +25,18 @@
   },
   "hosting": {
     "public": "dist",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
     "headers": [
       {
         "source": "**",
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; base-uri 'self'; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebaseappcheck.googleapis.com https://firebaseinstallations.googleapis.com https://southamerica-east1-controllstok.cloudfunctions.net https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.recaptcha.net/recaptcha/; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://www.recaptcha.net/recaptcha/; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.recaptcha.net/recaptcha/; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; upgrade-insecure-requests"
+            "value": "default-src 'self'; base-uri 'self'; connect-src 'self' https://firebase.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://firebaseinstallations.googleapis.com https://southamerica-east1-controllstok.cloudfunctions.net https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.recaptcha.net/recaptcha/ https://www.google-analytics.com https://region1.google-analytics.com; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://www.recaptcha.net/recaptcha/; img-src 'self' data: blob: https://www.google-analytics.com; media-src 'self' blob:; object-src 'none'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.recaptcha.net/recaptcha/ https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; upgrade-insecure-requests"
           },
           {
             "key": "Cache-Control",
@@ -79,9 +83,18 @@
       }
     ],
     "rewrites": [
-      { "source": "/politics-privacy.html", "destination": "/politics-privacy.html" },
-      { "source": "/terms-of-use.html", "destination": "/terms-of-use.html" },
-      { "source": "**", "destination": "/index.html" }
+      {
+        "source": "/politics-privacy.html",
+        "destination": "/politics-privacy.html"
+      },
+      {
+        "source": "/terms-of-use.html",
+        "destination": "/terms-of-use.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
     ]
   },
   "emulators": {

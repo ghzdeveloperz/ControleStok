@@ -1,0 +1,73 @@
+:root {
+  --msd-white: #ffffff;
+  --msd-black: #000000;
+
+  --msd-brand-50: #f3f4fb;
+  --msd-brand-100: #e5e8f7;
+  --msd-brand-200: #c9d0ef;
+  --msd-brand-300: #a6b2e4;
+  --msd-brand-400: #7c8bd7;
+  --msd-brand-500: #5567c7;
+  --msd-brand-600: #3e4ea7;
+  --msd-brand-700: #2e3a82;
+  --msd-brand-800: #232c62;
+  --msd-brand-900: #1b2147;
+
+  --msd-neutral-0: #ffffff;
+  --msd-neutral-25: #fcfcfd;
+  --msd-neutral-50: #f7f8fa;
+  --msd-neutral-100: #f0f2f5;
+  --msd-neutral-200: #e4e7ec;
+  --msd-neutral-300: #d0d5dd;
+  --msd-neutral-400: #98a2b3;
+  --msd-neutral-500: #667085;
+  --msd-neutral-600: #475467;
+  --msd-neutral-700: #344054;
+  --msd-neutral-800: #1d2939;
+  --msd-neutral-900: #101828;
+
+  --msd-success: #067647;
+  --msd-success-container: #ecfdf3;
+  --msd-on-success-container: #054f31;
+
+  --msd-warning: #b54708;
+  --msd-warning-container: #fffaeb;
+  --msd-on-warning-container: #7a2e0e;
+
+  --msd-error: #b42318;
+  --msd-error-container: #fef3f2;
+  --msd-on-error-container: #7a271a;
+
+  --msd-info: #175cd3;
+  --msd-info-container: #eff8ff;
+  --msd-on-info-container: #1849a9;
+
+  --msd-primary: var(--msd-brand-900);
+  --msd-primary-hover: var(--msd-brand-800);
+  --msd-primary-soft: var(--msd-brand-50);
+
+  --msd-surface: var(--msd-neutral-25);
+  --msd-surface-container: var(--msd-white);
+  --msd-surface-container-high: var(--msd-neutral-50);
+  --msd-surface-container-highest: var(--msd-neutral-100);
+  --msd-on-surface: var(--msd-neutral-900);
+  --msd-on-surface-variant: var(--msd-neutral-500);
+  --msd-outline: var(--msd-neutral-300);
+  --msd-outline-variant: var(--msd-neutral-200);
+  --msd-scrim: rgb(0 0 0 / 0.34);
+}
+
+.dark {
+  --msd-primary: var(--msd-brand-300);
+  --msd-primary-hover: var(--msd-brand-200);
+  --msd-primary-soft: #182230;
+  --msd-surface: #0c111d;
+  --msd-surface-container: #101828;
+  --msd-surface-container-high: #131a26;
+  --msd-surface-container-highest: #182230;
+  --msd-on-surface: var(--msd-neutral-25);
+  --msd-on-surface-variant: var(--msd-neutral-400);
+  --msd-outline: var(--msd-neutral-700);
+  --msd-outline-variant: #243042;
+  --msd-scrim: rgb(0 0 0 / 0.56);
+}

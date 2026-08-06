@@ -1,0 +1,9 @@
+:root {
+  --msd-radius-xs: 0.625rem;
+  --msd-radius-sm: 0.75rem;
+  --msd-radius-md: 1rem;
+  --msd-radius-lg: 1.125rem;
+  --msd-radius-xl: 1.375rem;
+  --msd-radius-xxl: 1.75rem;
+  --msd-radius-pill: 999rem;
+}
