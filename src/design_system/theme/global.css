@@ -4,6 +4,7 @@
 @import "../tokens/typography.css";
 @import "../tokens/motion.css";
 @import "./auth.css";
+@import "./components/progress-action-button.css";
 
 /* =========================================================
    Base global
@@ -75,12 +76,23 @@ svg {
 }
 
 button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
+a:focus-visible {
   outline: 3px solid rgb(85 103 199 / 0.28);
   outline-offset: 2px;
+}
+
+/*
+ * Inputs, selects e textareas não recebem outline próprio.
+ * O foco visual é exibido no container do campo por :focus-within.
+ */
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: 0;
+  box-shadow: none;
 }
 
 .msd-visually-hidden {

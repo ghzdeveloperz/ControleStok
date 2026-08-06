@@ -31,5 +31,16 @@ Detalhes: [Milestone 002](docs/milestones/milestone-002.md)
 
 ---
 
+## Milestone 003 — Refinamento do Onboarding de Empresa
+
+- Reestruturado o fluxo de configuração inicial em três etapas.
+- Organizados os dados principais e opcionais da empresa.
+- Adicionado tipo de negócio personalizado para a opção `Outro`.
+- Separados os aceites de Termos de Uso e Política de Privacidade.
+- Implementado resumo final minimalista.
+- Criado botão de ação reutilizável.
+- Corrigidos foco dos inputs, scroll interno, alertas e cortes de conteúdo.
+
+Detalhes: [Milestone 003](docs/milestones/milestone-003.md)
 
 

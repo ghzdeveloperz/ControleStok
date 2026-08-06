@@ -1,16 +1,13 @@
 import { Building2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { routePaths } from "../../../../app/router/route-paths";
 import { AppButton } from "../../../../design_system/components/AppButton";
 import { useAuth } from "../../application/use-auth";
 
 export const AccountUnavailablePage = () => {
-  const navigate = useNavigate();
   const { statusMessage, logout } = useAuth();
 
   const leave = async () => {
     await logout();
-    navigate(routePaths.access, { replace: true });
+    window.location.assign("https://mystoreday.com");
   };
 
   return (

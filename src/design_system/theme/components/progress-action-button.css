@@ -1,0 +1,338 @@
+/* =========================================================
+   MyStoreDay — Progress Action Button
+   Novo efeito orgânico baseado no componente enviado.
+   A animação ocorre quando o botão muda de disabled=true
+   para disabled=false. O hover apenas eleva o botão.
+   ========================================================= */
+
+.msd-progress-action {
+  position: relative;
+  z-index: 1;
+  min-width: 12rem;
+  min-height: 3.5rem;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  overflow: hidden;
+  padding: 0.78rem 1.5rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 0.75rem;
+  outline: none;
+  color: #667085;
+  background: #ffffff;
+  box-shadow:
+    0 0.5rem 1.25rem rgb(27 33 71 / 0.08),
+    inset 0 1px rgb(255 255 255 / 0.92);
+  cursor: pointer;
+  appearance: none;
+  user-select: none;
+  isolation: isolate;
+  transition:
+    color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease,
+    background-color 220ms ease;
+}
+
+.msd-progress-action--full {
+  width: 100%;
+}
+
+.msd-progress-action::before,
+.msd-progress-action::after {
+  content: "";
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.msd-progress-action::before {
+  top: 100%;
+  left: 50%;
+  width: 140%;
+  height: 180%;
+  background: rgb(27 33 71 / 0.06);
+  transform:
+    translateX(-50%)
+    scaleY(1)
+    scaleX(1.25);
+  transition:
+    top 500ms 100ms cubic-bezier(0.55, 0, 0.1, 1),
+    transform 500ms 100ms cubic-bezier(0.55, 0, 0.1, 1),
+    background-color 500ms 100ms cubic-bezier(0.55, 0, 0.1, 1);
+}
+
+.msd-progress-action::after {
+  top: 180%;
+  left: 55%;
+  width: 160%;
+  height: 190%;
+  background: #1b2147;
+  transform:
+    translateX(-50%)
+    scaleY(1)
+    scaleX(1.45);
+  transition:
+    top 500ms 100ms cubic-bezier(0.55, 0, 0.1, 1),
+    transform 500ms 100ms cubic-bezier(0.55, 0, 0.1, 1),
+    background-color 500ms 100ms cubic-bezier(0.55, 0, 0.1, 1);
+}
+
+.msd-progress-action__label {
+  position: relative;
+  z-index: 2;
+  color: inherit;
+  font-size: 0.88rem;
+  font-weight: 760;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  transition: color 300ms ease;
+}
+
+/* =========================================================
+   Estado desabilitado
+   ========================================================= */
+
+.msd-progress-action:disabled {
+  color: #98a2b3;
+  border-color: #e4e7ec;
+  background: #ffffff;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.msd-progress-action:disabled::before {
+  top: 100%;
+  background: rgb(27 33 71 / 0.04);
+  transform:
+    translateX(-50%)
+    scaleY(1)
+    scaleX(1.25);
+}
+
+.msd-progress-action:disabled::after {
+  top: 180%;
+  background: #1b2147;
+  transform:
+    translateX(-50%)
+    scaleY(1)
+    scaleX(1.45);
+}
+
+/* =========================================================
+   Estado habilitado
+   Resultado final equivalente ao hover do original.
+   ========================================================= */
+
+.msd-progress-action:not(:disabled) {
+  color: #ffffff;
+  border-color: #1b2147;
+  box-shadow:
+    0 0.8rem 1.8rem rgb(27 33 71 / 0.2);
+}
+
+.msd-progress-action:not(:disabled)::before {
+  top: -35%;
+  background: #1b2147;
+  transform:
+    translateX(-50%)
+    scaleY(1.3)
+    scaleX(0.8);
+}
+
+.msd-progress-action:not(:disabled)::after {
+  top: -45%;
+  background: #1b2147;
+  transform:
+    translateX(-50%)
+    scaleY(1.3)
+    scaleX(0.8);
+}
+
+/* =========================================================
+   Reexecução explícita quando fica clicável
+   ========================================================= */
+
+.msd-progress-action--activating::before {
+  animation:
+    msd-progress-action-wave-primary
+    650ms
+    cubic-bezier(0.55, 0, 0.1, 1)
+    both;
+}
+
+.msd-progress-action--activating::after {
+  animation:
+    msd-progress-action-wave-secondary
+    650ms
+    cubic-bezier(0.55, 0, 0.1, 1)
+    both;
+}
+
+.msd-progress-action--activating
+  .msd-progress-action__label {
+  animation:
+    msd-progress-action-label-enable
+    520ms
+    ease
+    both;
+}
+
+@keyframes msd-progress-action-wave-primary {
+  from {
+    top: 100%;
+    transform:
+      translateX(-50%)
+      scaleY(1)
+      scaleX(1.25);
+  }
+
+  to {
+    top: -35%;
+    transform:
+      translateX(-50%)
+      scaleY(1.3)
+      scaleX(0.8);
+  }
+}
+
+@keyframes msd-progress-action-wave-secondary {
+  from {
+    top: 180%;
+    transform:
+      translateX(-50%)
+      scaleY(1)
+      scaleX(1.45);
+  }
+
+  to {
+    top: -45%;
+    transform:
+      translateX(-50%)
+      scaleY(1.3)
+      scaleX(0.8);
+  }
+}
+
+@keyframes msd-progress-action-label-enable {
+  from {
+    color: #101828;
+  }
+
+  to {
+    color: #ffffff;
+  }
+}
+
+/* =========================================================
+   Hover
+   Não dispara o preenchimento.
+   ========================================================= */
+
+.msd-progress-action:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1rem 2rem rgb(27 33 71 / 0.25);
+}
+
+.msd-progress-action:not(:disabled):active {
+  transform: translateY(0) scale(0.985);
+}
+
+/* =========================================================
+   Loading
+   ========================================================= */
+
+.msd-progress-action--loading {
+  cursor: wait;
+}
+
+.msd-progress-action__spinner {
+  position: relative;
+  z-index: 2;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: msd-progress-action-spin 650ms linear infinite;
+}
+
+@keyframes msd-progress-action-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================================
+   Foco acessível
+   ========================================================= */
+
+.msd-progress-action:focus-visible {
+  outline: 3px solid rgb(85 103 199 / 0.22);
+  outline-offset: 3px;
+}
+
+/* =========================================================
+   Tema escuro
+   ========================================================= */
+
+.dark .msd-progress-action {
+  color: #98a2b3;
+  border-color: #243042;
+  background: #101828;
+  box-shadow:
+    0 0.5rem 1.25rem rgb(0 0 0 / 0.24);
+}
+
+.dark .msd-progress-action:not(:disabled) {
+  color: #101828;
+  border-color: #a6b2e4;
+}
+
+.dark .msd-progress-action:not(:disabled)::before,
+.dark .msd-progress-action:not(:disabled)::after {
+  background: #a6b2e4;
+}
+
+.dark .msd-progress-action:disabled {
+  color: #98a2b3;
+  border-color: #243042;
+  background: #101828;
+}
+
+/* =========================================================
+   Mobile
+   ========================================================= */
+
+@media (max-width: 720px) {
+  .msd-progress-action {
+    min-width: 10rem;
+    min-height: 3.35rem;
+    padding-inline: 1.2rem;
+  }
+
+  .msd-progress-action__label {
+    font-size: 0.8rem;
+  }
+}
+
+/* =========================================================
+   Movimento reduzido
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .msd-progress-action,
+  .msd-progress-action::before,
+  .msd-progress-action::after,
+  .msd-progress-action * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

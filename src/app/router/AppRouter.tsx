@@ -5,7 +5,6 @@ import { RegistrationRouteGuard } from "./RegistrationRouteGuard";
 import { routePaths } from "./route-paths";
 import { useAuth } from "../../features/auth/application/use-auth";
 import { AccountUnavailablePage } from "../../features/auth/presentation/pages/AccountUnavailablePage";
-import { AuthChoicePage } from "../../features/auth/presentation/pages/AuthChoicePage";
 import { AuthErrorPage } from "../../features/auth/presentation/pages/AuthErrorPage";
 import { LoginPage } from "../../features/auth/presentation/pages/LoginPage";
 import { SignUpPage } from "../../features/auth/presentation/pages/SignUpPage";
@@ -38,7 +37,6 @@ export const AppRouter = () => {
   return (
     <Routes>
       <Route path={routePaths.root} element={<Home />} />
-      <Route path={routePaths.access} element={<AuthRouteGuard><AuthChoicePage /></AuthRouteGuard>} />
       <Route path={routePaths.login} element={<AuthRouteGuard><LoginPage /></AuthRouteGuard>} />
       <Route path={routePaths.signUp} element={<AuthRouteGuard><SignUpPage /></AuthRouteGuard>} />
       <Route path={routePaths.verifyEmail} element={<RegistrationRouteGuard stage="verification"><VerifyEmailPage /></RegistrationRouteGuard>} />
@@ -46,7 +44,7 @@ export const AppRouter = () => {
       <Route path={routePaths.privacy} element={<PrivacyPolicy />} />
       <Route path={routePaths.terms} element={<TermsOfUse />} />
 
-      <Route path={routePaths.legacy.access} element={<Navigate to={routePaths.access} replace />} />
+      <Route path={routePaths.legacy.access} element={<Navigate to={routePaths.root} replace />} />
       <Route path={routePaths.legacy.register} element={<Navigate to={routePaths.signUp} replace />} />
       <Route path={routePaths.legacy.verifyEmail} element={<Navigate to={routePaths.verifyEmail} replace />} />
       <Route path={routePaths.legacy.companySetup} element={<Navigate to={routePaths.companySetup} replace />} />
