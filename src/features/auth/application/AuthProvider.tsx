@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }: { readonly children: ReactNode }) => 
   }, []);
 
   const resolveUser = useCallback(
-    async (candidate: User, sequence: number): Promise<void> => {
+    async (candidate: User, sequence: number): Promise<AuthStatus> => {
       await candidate.reload();
       const freshUser = auth.currentUser;
 
@@ -90,7 +90,7 @@ export const AuthProvider = ({ children }: { readonly children: ReactNode }) => 
         );
       }
 
-      if (sequence !== sequenceRef.current) return;
+      if (sequence !== sequenceRef.current) return "initializing";
 
       setUser(freshUser);
 
@@ -100,13 +100,13 @@ export const AuthProvider = ({ children }: { readonly children: ReactNode }) => 
           session: null,
           message: null,
         });
-        return;
+        return "email_verification_required";
       }
 
       try {
         const resolvedSession = await resolveAuthSession(freshUser);
         if (sequence !== sequenceRef.current || auth.currentUser?.uid !== freshUser.uid) {
-          return;
+          return "initializing";
         }
 
         applyState({
@@ -114,13 +114,14 @@ export const AuthProvider = ({ children }: { readonly children: ReactNode }) => 
           session: resolvedSession,
           message: null,
         });
+        return "authenticated";
       } catch (error) {
         if (!(error instanceof AuthSessionError)) throw error;
 
         const mappedState = stateFromSessionError(error);
         if (mappedState) {
           applyState(mappedState);
-          return;
+          return mappedState.status;
         }
 
         throw error;
@@ -176,13 +177,13 @@ export const AuthProvider = ({ children }: { readonly children: ReactNode }) => 
   }, [applyState, resolveUser]);
 
   const runAuthMutation = useCallback(
-    async (operation: () => Promise<User>): Promise<void> => {
+    async (operation: () => Promise<User>): Promise<AuthStatus> => {
       const sequence = ++sequenceRef.current;
       mutationInProgressRef.current = true;
 
       try {
         const authenticatedUser = await operation();
-        await resolveUser(authenticatedUser, sequence);
+        return await resolveUser(authenticatedUser, sequence);
       } catch (error) {
         try {
           await signOut(auth);
@@ -227,8 +228,8 @@ export const AuthProvider = ({ children }: { readonly children: ReactNode }) => 
     [runAuthMutation],
   );
 
-  const loginWithGoogleAction = useCallback(async (): Promise<void> => {
-    await runAuthMutation(async () => {
+  const loginWithGoogleAction = useCallback(async (): Promise<AuthStatus> => {
+    return runAuthMutation(async () => {
       const credential = await signInWithGoogle();
       return credential.user;
     });
@@ -318,3 +319,4 @@ export const AuthProvider = ({ children }: { readonly children: ReactNode }) => 
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+

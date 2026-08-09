@@ -43,4 +43,23 @@ Detalhes: [Milestone 002](docs/milestones/milestone-002.md)
 
 Detalhes: [Milestone 003](docs/milestones/milestone-003.md)
 
+---
 
+## Milestone 004 — Home Institucional e Ecossistema MyStoreDay
+
+- Reestruturada completamente a Home principal do MyStoreDay.
+- Reposicionada a página de landing page SaaS para apresentação institucional da marca.
+- Criada apresentação dedicada do MyStoreDay para Comércios.
+- Criada apresentação dedicada do MyStoreDay para Fornecedores.
+- Adicionada representação visual do ecossistema conectado entre produtos, estoque, movimentações, fornecedores e métricas.
+- Criada seção de produto em ação com dashboard ilustrativo.
+- Refinado o Hero principal com hierarquia tipográfica mais forte e comunicação mais direta.
+- Mantido Header flutuante com efeito Liquid Glass e animação de ocultação no scroll.
+- Reduzido o uso de cards genéricos, checklists excessivos e elementos típicos de templates SaaS.
+- Adotada composição mais editorial, minimalista e orientada a produto.
+- Mantida a identidade visual existente com tokens oficiais do Design System.
+- Preservados light mode, dark mode, responsividade e `prefers-reduced-motion`.
+- Removidas estatísticas públicas estáticas e seções genéricas sem necessidade institucional.
+- Mantidas zero novas dependências para a implementação da Home.
+
+Detalhes: [Milestone 004](docs/milestones/milestone-004.md)

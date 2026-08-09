@@ -11,6 +11,7 @@ import { useAuth } from "../../application/use-auth";
 import { useSignUpFlow } from "../../application/use-sign-up-flow";
 import { evaluatePasswordStrength } from "../../domain/password-strength";
 import { PasswordStrength } from "../components/PasswordStrength";
+import { resolveGoogleAuthNextRoute } from "../google-auth-next-route";
 
 export const SignUpPage = () => {
   const navigate = useNavigate();
@@ -41,8 +42,8 @@ export const SignUpPage = () => {
     setLocalError(null);
     setGoogleSubmitting(true);
     try {
-      await loginWithGoogle();
-      navigate(routePaths.companySetup, { replace: true });
+      const nextStatus = await loginWithGoogle();
+      navigate(resolveGoogleAuthNextRoute(nextStatus), { replace: true });
     } catch (error) {
       setLocalError(error instanceof Error ? error.message : "Não foi possível continuar com Google.");
     } finally {
@@ -240,3 +241,4 @@ export const SignUpPage = () => {
     </AuthShell>
   );
 };
+

@@ -34,10 +34,11 @@ export interface AuthContextValue {
   readonly statusMessage: string | null;
   readonly login: (email: string, password: string) => Promise<void>;
   readonly register: (input: RegisterInput) => Promise<void>;
-  readonly loginWithGoogle: () => Promise<void>;
+  readonly loginWithGoogle: () => Promise<AuthStatus>;
   readonly resendVerification: () => Promise<void>;
   readonly refreshVerification: () => Promise<void>;
   readonly resetPassword: (email: string) => Promise<void>;
   readonly refreshAccount: () => Promise<void>;
   readonly logout: () => Promise<void>;
 }
+

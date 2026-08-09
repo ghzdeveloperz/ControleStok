@@ -9,6 +9,7 @@ import { AppTextField } from "../../../../design_system/components/AppTextField"
 import { AuthShell } from "../../../../design_system/components/AuthShell";
 import { getAuthErrorMessage } from "../../application/auth-error-message";
 import { useAuth } from "../../application/use-auth";
+import { resolveGoogleAuthNextRoute } from "../google-auth-next-route";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -51,8 +52,8 @@ export const LoginPage = () => {
     setGoogleSubmitting(true);
 
     try {
-      await loginWithGoogle();
-      navigate(routePaths.root, { replace: true });
+      const nextStatus = await loginWithGoogle();
+      navigate(resolveGoogleAuthNextRoute(nextStatus), { replace: true });
     } catch (error) {
       setMessageTone("error");
       setMessage(getAuthErrorMessage(error));
@@ -177,3 +178,4 @@ export const LoginPage = () => {
     </AuthShell>
   );
 };
+
