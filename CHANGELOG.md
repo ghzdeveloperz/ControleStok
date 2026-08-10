@@ -63,3 +63,27 @@ Detalhes: [Milestone 003](docs/milestones/milestone-003.md)
 - Mantidas zero novas dependências para a implementação da Home.
 
 Detalhes: [Milestone 004](docs/milestones/milestone-004.md)
+
+---
+
+## Milestone 005 — Refinamento Visual e Navegação da Home
+
+- Refinado o Header institucional da Home.
+- Substituídos links legais por navegação orientada às principais seções do produto.
+- Adicionadas opções para Soluções, Comércios, Fornecedores e App mobile.
+- Implementado scroll suave entre seções.
+- Adicionado efeito de sublinhado animado nos itens de navegação.
+- Criado menu hambúrguer responsivo para dispositivos mobile.
+- Centralizado o logotipo oficial do MyStoreDay no Header mobile.
+- Integrada a versão oficial da marca com símbolo e nome no Header desktop e mobile.
+- Integradas imagens reais e conceituais do ecossistema, dashboard, produtos e aplicativo.
+- Adicionadas faixas animadas de Comércios e Fornecedores em sentidos opostos.
+- Refinado o visual das faixas para uma composição editorial e transparente.
+- Ajustadas tipografia, espaçamento e velocidade das faixas no mobile.
+- Corrigido o corte da imagem do aplicativo mobile.
+- Refinado o espaçamento vertical entre as principais seções da Home.
+- Mantida compatibilidade com light mode, dark mode e `prefers-reduced-motion`.
+- Preservados os tokens e padrões existentes do Design System.
+- Mantida implementação sem novas dependências.
+
+Detalhes: [Milestone 005](docs/milestones/milestone-005.md)
